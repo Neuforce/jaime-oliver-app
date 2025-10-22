@@ -50,7 +50,7 @@ export default function HomePage() {
             <span className="text-3xl">💬</span>
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Jaime Oliver App
+            Jamie Oliver App
           </h1>
           <p className="text-gray-600">
             Start a conversation or continue an existing one

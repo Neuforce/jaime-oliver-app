@@ -1,7 +1,8 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ChatMessage } from '../../types/chat';
 import { MessageBubble } from './MessageBubble';
 import { MessageInput } from './MessageInput';
+import { VoiceInstructions } from './VoiceInstructions';
 
 interface ChatWindowProps {
   messages: ChatMessage[];
@@ -17,6 +18,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   sessionId,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [showVoiceInstructions, setShowVoiceInstructions] = useState(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -26,8 +28,19 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     scrollToBottom();
   }, [messages]);
 
+  useEffect(() => {
+    // Show voice instructions when chat starts
+    if (messages.length === 0) {
+      setShowVoiceInstructions(true);
+    }
+  }, [messages.length]);
+
   return (
     <div className="flex flex-col h-full">
+      <VoiceInstructions 
+        isVisible={showVoiceInstructions}
+        onClose={() => setShowVoiceInstructions(false)}
+      />
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -66,7 +79,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       <MessageInput
         onSendMessage={onSendMessage}
         disabled={isLoading}
-        placeholder={isLoading ? 'Waiting...' : 'Type a message...'}
+        placeholder={isLoading ? 'Waiting...' : 'Ask me anything about cooking...'}
+        enableVoiceInput={true}
       />
     </div>
   );

@@ -1,4 +1,4 @@
-# Jamier Oliver App - Real-Time Chat
+# Jamie Oliver App - Real-Time Chat
 
 A complete real-time chat application built with Next.js 14, TypeScript and WebSockets.
 
@@ -19,7 +19,7 @@ A complete real-time chat application built with Next.js 14, TypeScript and WebS
 ## 📁 Project Structure
 
 ```
-jamier-oliver-app/
+jamie-oliver-app/
 ├── app/
 │   ├── layout.tsx              # Main layout
 │   ├── page.tsx                # Home page

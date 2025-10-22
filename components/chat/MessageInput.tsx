@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
 import { Button } from '../ui/Button';
+import { VoiceInput } from './VoiceInput';
 
 interface MessageInputProps {
   onSendMessage: (message: string) => void;
   disabled?: boolean;
   placeholder?: string;
+  enableVoiceInput?: boolean;
 }
 
 export const MessageInput: React.FC<MessageInputProps> = ({
   onSendMessage,
   disabled = false,
   placeholder = 'Type a message...',
+  enableVoiceInput = true,
 }) => {
   const [message, setMessage] = useState('');
 
@@ -29,6 +32,14 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     }
   };
 
+  const handleVoiceResult = (text: string) => {
+    if (text.trim()) {
+      // Auto-send voice messages for better UX in kitchen
+      // Don't set the message in the input to avoid showing it
+      onSendMessage(text.trim());
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit} className="flex gap-3 p-4 bg-white border-t">
       <input
@@ -40,6 +51,15 @@ export const MessageInput: React.FC<MessageInputProps> = ({
         disabled={disabled}
         className="flex-1 px-4 py-3 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed bg-gray-50"
       />
+      
+      {enableVoiceInput && (
+        <VoiceInput
+          onVoiceResult={handleVoiceResult}
+          disabled={disabled}
+          language="en-US"
+        />
+      )}
+      
       <Button
         type="submit"
         disabled={!message.trim() || disabled}

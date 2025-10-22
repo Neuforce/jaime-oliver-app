@@ -1,7 +1,7 @@
 import { Conversation, ConversationHistory } from '../types/conversation';
 import { ChatMessage } from '../types/chat';
 
-const STORAGE_KEY = 'jaime-oliver-conversations';
+const STORAGE_KEY = 'jamie-oliver-conversations';
 
 export const saveConversation = (conversationId: string, messages: ChatMessage[]) => {
   try {
