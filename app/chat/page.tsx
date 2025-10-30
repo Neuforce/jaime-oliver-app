@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ChatWindow } from '../../components/chat/ChatWindow';
 import { Button } from '../../components/ui/Button';
@@ -42,6 +43,7 @@ export default function ChatPage() {
   useEffect(() => {
     const loadConversation = async () => {
       const conversationId = searchParams.get('conversation');
+      const starter = searchParams.get('starter');
       
       if (conversationId) {
         setIsLoadingHistory(true);
@@ -57,6 +59,45 @@ export default function ChatPage() {
         } finally {
           setIsLoadingHistory(false);
         }
+      } else if (starter) {
+        // Prime a new session with the starter and a mocked recipe list response
+        const newSessionId = `${Date.now()}`;
+        setInitialSessionId(newSessionId);
+        const now = new Date().toISOString();
+        const initial: ChatMessage[] = [
+          {
+            type: 'message',
+            sender: 'user',
+            session_id: newSessionId,
+            content: starter,
+            timestamp: now,
+          },
+          {
+            type: 'recipeList',
+            sender: 'agent',
+            session_id: newSessionId,
+            content: "Here's a small collection of easy, delicious, and healthy recipes that are flavorful but won't overwhelm you in the kitchen:",
+            timestamp: new Date(Date.now() + 1000).toISOString(),
+            recipes: [
+              {
+                title: 'Jacket potato',
+                duration: '1 hr',
+                imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800',
+              },
+              {
+                title: 'Chickpea arrabbiata',
+                duration: '15 min',
+                imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=801',
+              },
+              {
+                title: 'Happy fish pie',
+                duration: '1 hr 10 min',
+                imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=802',
+              },
+            ],
+          },
+        ];
+        setInitialMessages(initial);
       }
     };
     
@@ -83,37 +124,17 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <Button
-            variant="ghost"
-            onClick={handleBackToHome}
-            className="text-gray-600 hover:text-gray-900 p-2"
-          >
-            ←
-          </Button>
-          <div className="flex items-center space-x-2">
-            <div
-              className={`w-2 h-2 rounded-full ${
-                isConnected ? 'bg-green-500' : 'bg-red-500'
-              }`}
-            />
-            <span className="text-sm text-gray-600">
-              {isConnected ? 'Connected' : 'Disconnected'}
-            </span>
-          </div>
-        </div>
-        
-        <Button
-          variant="ghost"
-          onClick={handleClearChat}
-          disabled={messages.length === 0}
-          className="text-gray-600 hover:text-gray-900"
+    <div className="h-screen flex flex-col bg-white">
+      {/* Top bar */}
+      <div className="px-4 pt-3 pb-2 flex items-center justify-center relative">
+        <button
+          onClick={handleBackToHome}
+          aria-label="Back"
+          className="absolute left-4 text-gray-500 hover:text-gray-800 text-xl"
         >
-          Clear
-        </Button>
+          ×
+        </button>
+        <Image src="/jamie-heart.png" alt="Jamie Oliver" width={150} height={20} />
       </div>
 
       {/* Error Display */}

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { ChatMessage } from '../types/chat';
 import { getSessionId, getCurrentSessionId, setCurrentSessionId } from '../lib/session';
 import { saveConversation, saveConversationMessages, getConversationMessages } from '../lib/conversationHistory';
+import { WebSocketManager } from '../lib/websocket';
 
 interface UseChatSocketOptions {
   onMessage?: (message: ChatMessage) => void;
@@ -20,14 +21,15 @@ export const useChatSocket = (options: UseChatSocketOptions = {}) => {
   const [sessionId, setSessionId] = useState<string>(options.initialSessionId || '');
   
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const wsManagerRef = useRef<WebSocketManager | null>(null);
 
   const connect = useCallback(async () => {
     try {
-      let session = options.initialSessionId;
+      let session: string | undefined = options.initialSessionId;
       
       if (!session) {
         // Check if there's a current session
-        session = getCurrentSessionId();
+        session = getCurrentSessionId() || undefined;
         
         if (!session) {
           // Create a new session
@@ -40,14 +42,70 @@ export const useChatSocket = (options: UseChatSocketOptions = {}) => {
       
       setSessionId(session);
       setError(null);
-      setIsConnected(true);
-      options.onConnect?.();
+
+      // Connect to WebSocket server to receive push messages from backend
+      // Allow disabling WS by leaving NEXT_PUBLIC_WS_URL undefined or setting it to "disabled"
+      const wsBase = process.env.NEXT_PUBLIC_WS_URL;
+      if (!wsBase || wsBase === 'disabled') {
+        // Skip WS connection in local/dev mock mode
+        setIsConnected(false);
+        wsManagerRef.current = null;
+        return;
+      }
+      const wsUrl = `${wsBase}/api/ws?session_id=${session}`;
+      const wsManager = new WebSocketManager(wsUrl);
       
-      console.log('Connected to chat (simulated) with session:', session);
+      // Set up event listeners
+      wsManager.on('connected', () => {
+        console.log('[useChatSocket] WebSocket connected for session:', session);
+        setIsConnected(true);
+        options.onConnect?.();
+      });
+
+      wsManager.on('disconnected', () => {
+        console.log('[useChatSocket] WebSocket disconnected');
+        setIsConnected(false);
+        options.onDisconnect?.();
+      });
+
+      wsManager.on('message', (wsMessage: any) => {
+        console.log('[useChatSocket] Received WebSocket message:', wsMessage);
+        
+        // Handle different types of messages
+        if (wsMessage.type === 'message' && wsMessage.data) {
+          const chatMessage: ChatMessage = wsMessage.data;
+          
+          // Add message to state
+          setMessages(prev => {
+            const newMessages = [...prev, chatMessage];
+            saveConversationMessages(session, newMessages);
+            return newMessages;
+          });
+          
+          // Call the onMessage callback
+          options.onMessage?.(chatMessage);
+        }
+      });
+
+      wsManager.on('error', (error: any) => {
+        console.error('[useChatSocket] WebSocket error:', error);
+        const errorMessage = error.error || 'Connection error';
+        setError(errorMessage);
+        options.onError?.(errorMessage);
+      });
+
+      // Store manager reference
+      wsManagerRef.current = wsManager;
+      
+      // Connect to WebSocket
+      await wsManager.connect();
+      
     } catch (err) {
+      console.error('[useChatSocket] Connection error:', err);
       const errorMessage = 'Could not connect to server';
       setError(errorMessage);
       options.onError?.(errorMessage);
+      setIsConnected(false);
     }
   }, [options]);
 
@@ -70,6 +128,13 @@ export const useChatSocket = (options: UseChatSocketOptions = {}) => {
       clearInterval(pollingIntervalRef.current);
       pollingIntervalRef.current = null;
     }
+    
+    // Disconnect WebSocket
+    if (wsManagerRef.current) {
+      wsManagerRef.current.disconnect();
+      wsManagerRef.current = null;
+    }
+    
     setIsConnected(false);
     options.onDisconnect?.();
   }, [options]);

@@ -96,6 +96,21 @@ export const useVoiceRecognition = ({
           return;
         }
         
+        // Pre-flight audio capture to avoid "audio-capture" errors in some browsers
+        // (Required user gesture still applies; this call ensures a real device exists)
+        if (navigator.mediaDevices?.getUserMedia) {
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            // Immediately release the device; speech recognition will take over
+            stream.getTracks().forEach(t => t.stop());
+          } catch (e) {
+            const errorMessage = 'Unable to access microphone (audio-capture). Please check permissions or device.';
+            setError(errorMessage);
+            onError?.(errorMessage);
+            return;
+          }
+        }
+
         reset(); // This will clear transcript and error
         
         // Small delay to ensure recognition is ready

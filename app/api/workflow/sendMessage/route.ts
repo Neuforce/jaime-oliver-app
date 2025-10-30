@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { WorkflowMessagePayload } from '../../../../types/chatHistory';
+import { getMockExternalBackend } from '../../../../lib/mockExternalBackend';
+import { sendToSession } from '../../ws/route';
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,39 +15,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`Workflow received message for session ${session_id}:`, message);
+    console.log(`[Workflow] Received message for session ${session_id}:`, message);
 
-    // Simulate workflow processing
-    // In a real implementation, this would connect to your workflow system
-    const workflowResponse = await processWorkflowMessage(session_id, message);
+    // Get the external backend WebSocket client
+    const mockBackend = getMockExternalBackend();
+
+    // Send message to external backend via WebSocket
+    const externalResponse = await mockBackend.sendMessage(session_id, message);
+
+    console.log(`[Workflow] Received response from external backend:`, externalResponse);
+
+    // Push the response back to the frontend via WebSocket
+    const pushSuccess = sendToSession(session_id, {
+      type: 'message',
+      sender: 'agent',
+      session_id,
+      content: externalResponse.content || '',
+      timestamp: new Date().toISOString(),
+    });
+
+    if (!pushSuccess) {
+      console.warn(`[Workflow] Failed to push response to session ${session_id}`);
+    }
 
     return NextResponse.json({ 
       success: true, 
-      message: 'Message processed successfully',
-      response: workflowResponse
+      message: 'Message processed and sent to external backend via WebSocket',
+      response: externalResponse
     });
 
   } catch (error) {
-    console.error('Error processing workflow message:', error);
+    console.error('[Workflow] Error processing message:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     );
   }
-}
-
-// Simulate workflow processing
-async function processWorkflowMessage(sessionId: string, message: string): Promise<string> {
-  // Simulate processing delay
-  await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
-
-  // Simple response logic for demonstration
-  const responses = [
-    `I understand your message: "${message}". Is there anything else I can help you with?`,
-    `Thank you for your message. I've processed: "${message}". Do you need more information?`,
-    `I've received your inquiry about "${message}". Let me help you with that.`,
-    `Interesting point about "${message}". Would you like to dive deeper into any specific aspect?`,
-  ];
-
-  return responses[Math.floor(Math.random() * responses.length)];
 }

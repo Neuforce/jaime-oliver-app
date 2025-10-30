@@ -1,5 +1,11 @@
+export interface RecipeItem {
+  title: string;
+  duration: string; // e.g. '1 hr', '15 min'
+  imageUrl: string;
+}
+
 export interface ChatMessage {
-  type: 'message' | 'system' | 'status' | 'video' | 'audio';
+  type: 'message' | 'system' | 'status' | 'video' | 'audio' | 'recipeList';
   sender: 'user' | 'agent' | 'system';
   session_id: string;
   content: string;
@@ -10,6 +16,7 @@ export interface ChatMessage {
   audioUrl?: string;
   audioTitle?: string;
   audioDuration?: number;
+  recipes?: RecipeItem[];
 }
 
 export interface WorkflowMessagePayload {

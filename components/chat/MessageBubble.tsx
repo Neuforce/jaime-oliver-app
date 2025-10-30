@@ -11,6 +11,7 @@ interface MessageBubbleProps {
 export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
   const isUser = message.sender === 'user';
   const isSystem = message.sender === 'system';
+  const isRecipeList = message.type === 'recipeList';
   
   const formatTime = (timestamp: string) => {
     return new Date(timestamp).toLocaleTimeString('en-US', {
@@ -23,22 +24,48 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
     <div
       className={cn(
         'flex w-full',
-        isUser ? 'justify-end' : 'justify-start'
+        isUser ? 'justify-end' : (isRecipeList ? 'justify-center' : 'justify-start')
       )}
     >
       <div
         className={cn(
-          'max-w-xs lg:max-w-md px-4 py-3 rounded-2xl',
-          {
+          isRecipeList ? '' : 'max-w-[320px] rounded-2xl',
+          !isRecipeList && {
             'bg-blue-600 text-white': isUser,
             'bg-white text-gray-800 border border-gray-200': !isUser && !isSystem,
             'bg-yellow-50 text-yellow-800 border border-yellow-200': isSystem,
           }
         )}
       >
-        <div className="text-sm whitespace-pre-wrap break-words">
+        <div className={cn('text-sm whitespace-pre-wrap break-words', isRecipeList ? 'px-0 py-0' : 'px-4 py-3')}>
           {message.content}
         </div>
+
+        {isRecipeList && message.recipes && (
+          <div className="mt-3 rounded-xl border border-gray-200 bg-white">
+            <div className="px-4 py-3 border-b">
+              <div className="text-base font-semibold">My recommendations</div>
+            </div>
+            <div className="p-4 space-y-5">
+              {message.recipes.map((r, idx) => (
+                <div key={idx} className="flex flex-col">
+                  <img src={r.imageUrl} alt={r.title} className="w-full h-40 object-cover rounded-lg" />
+                  <div className="pt-2">
+                    <div className="font-medium text-gray-800">{r.title}</div>
+                    <div className="mt-1 text-xs text-gray-500 flex items-center gap-1">
+                      {/* Timer icon */}
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="12" r="9" stroke="#2AB3A6" strokeWidth="2"/>
+                        <path d="M12 7v5l3 2" stroke="#2AB3A6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      <span>{r.duration}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         
         {message.type === 'video' && message.videoUrl && (
           <div className="mt-3">
@@ -59,14 +86,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
             />
           </div>
         )}
-        <div
-          className={cn(
-            'text-xs mt-2 opacity-60',
-            isUser ? 'text-blue-100' : 'text-gray-400'
-          )}
-        >
-          {formatTime(message.timestamp)}
-        </div>
+        {/* Timestamp intentionally removed for cleaner look */}
       </div>
     </div>
   );
