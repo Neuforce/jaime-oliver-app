@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { ChatMessage } from '../types/chat';
+import { ChatMessage, WebSocketMessage } from '../types/chat';
 import { getSessionId, getCurrentSessionId, setCurrentSessionId } from '../lib/session';
-import { saveConversation, saveConversationMessages, getConversationMessages } from '../lib/conversationHistory';
+import { saveConversation, saveConversationMessages } from '../lib/conversationHistory';
 import { WebSocketManager } from '../lib/websocket';
 
 interface UseChatSocketOptions {
@@ -68,12 +68,13 @@ export const useChatSocket = (options: UseChatSocketOptions = {}) => {
         options.onDisconnect?.();
       });
 
-      wsManager.on('message', (wsMessage: any) => {
+      wsManager.on('message', (wsMessage: unknown) => {
         console.log('[useChatSocket] Received WebSocket message:', wsMessage);
         
         // Handle different types of messages
-        if (wsMessage.type === 'message' && wsMessage.data) {
-          const chatMessage: ChatMessage = wsMessage.data;
+        const message = wsMessage as WebSocketMessage;
+        if (message.type === 'message' && message.data) {
+          const chatMessage: ChatMessage = message.data;
           
           // Add message to state
           setMessages(prev => {
@@ -87,9 +88,10 @@ export const useChatSocket = (options: UseChatSocketOptions = {}) => {
         }
       });
 
-      wsManager.on('error', (error: any) => {
-        console.error('[useChatSocket] WebSocket error:', error);
-        const errorMessage = error.error || 'Connection error';
+      wsManager.on('error', (errorData: unknown) => {
+        console.error('[useChatSocket] WebSocket error:', errorData);
+        const errorObj = errorData as { error?: string };
+        const errorMessage = errorObj.error || 'Connection error';
         setError(errorMessage);
         options.onError?.(errorMessage);
       });
@@ -121,7 +123,7 @@ export const useChatSocket = (options: UseChatSocketOptions = {}) => {
     if (options.initialMessages && options.initialMessages.length > 0) {
       setMessages(options.initialMessages);
     }
-  }, [options.initialSessionId, options.initialMessages]);
+  }, [options.initialSessionId, options.initialMessages, sessionId]);
 
   const disconnect = useCallback(() => {
     if (pollingIntervalRef.current) {
@@ -286,7 +288,7 @@ export const useChatSocket = (options: UseChatSocketOptions = {}) => {
         setIsLoading(false);
       }, 1000 + Math.random() * 2000);
 
-    } catch (err) {
+    } catch {
       const errorMessage = 'Error sending message';
       setError(errorMessage);
       options.onError?.(errorMessage);

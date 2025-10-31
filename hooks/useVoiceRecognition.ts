@@ -1,5 +1,49 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
+// Types for Web Speech API (not included in standard TypeScript definitions)
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  maxAlternatives: number;
+  start(): void;
+  stop(): void;
+  abort(): void;
+  onstart: ((this: SpeechRecognition, ev: Event) => unknown) | null;
+  onend: ((this: SpeechRecognition, ev: Event) => unknown) | null;
+  onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => unknown) | null;
+  onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => unknown) | null;
+}
+
+type webkitSpeechRecognition = SpeechRecognition;
+
+interface SpeechRecognitionEvent extends Event {
+  resultIndex: number;
+  results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+}
+
+interface SpeechRecognitionResultList {
+  length: number;
+  item(index: number): SpeechRecognitionResult;
+  [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionResult {
+  length: number;
+  item(index: number): SpeechRecognitionAlternative;
+  [index: number]: SpeechRecognitionAlternative;
+  isFinal: boolean;
+}
+
+interface SpeechRecognitionAlternative {
+  transcript: string;
+  confidence: number;
+}
+
 interface UseVoiceRecognitionOptions {
   language?: string;
   continuous?: boolean;
@@ -38,7 +82,7 @@ export const useVoiceRecognition = ({
   const [transcript, setTranscript] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [microphonePermission, setMicrophonePermission] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown');
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognition | webkitSpeechRecognition | null>(null);
 
   const reset = useCallback(() => {
     setTranscript('');
@@ -60,7 +104,7 @@ export const useVoiceRecognition = ({
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           setMicrophonePermission('granted');
           stream.getTracks().forEach(track => track.stop());
-        } catch (err) {
+        } catch {
           setMicrophonePermission('denied');
         }
       } else {
@@ -103,7 +147,7 @@ export const useVoiceRecognition = ({
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             // Immediately release the device; speech recognition will take over
             stream.getTracks().forEach(t => t.stop());
-          } catch (e) {
+          } catch {
             const errorMessage = 'Unable to access microphone (audio-capture). Please check permissions or device.';
             setError(errorMessage);
             onError?.(errorMessage);
@@ -119,7 +163,7 @@ export const useVoiceRecognition = ({
             recognitionRef.current.start();
           }
         }, 100);
-      } catch (err) {
+      } catch {
         const errorMessage = 'Failed to start voice recognition';
         setError(errorMessage);
         onError?.(errorMessage);
@@ -139,11 +183,11 @@ export const useVoiceRecognition = ({
   }, [checkMicrophonePermission]);
 
   useEffect(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SpeechRecognitionConstructor = window.SpeechRecognition || window.webkitSpeechRecognition;
     
-    if (SpeechRecognition) {
+    if (SpeechRecognitionConstructor) {
       setIsSupported(true);
-      const recognition = new SpeechRecognition();
+      const recognition = new SpeechRecognitionConstructor();
       
       recognition.continuous = continuous;
       recognition.interimResults = interimResults;
@@ -157,7 +201,7 @@ export const useVoiceRecognition = ({
         onStart?.();
       };
 
-      recognition.onresult = (event: any) => {
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
         let finalTranscript = '';
         let interimTranscript = '';
 
@@ -175,7 +219,7 @@ export const useVoiceRecognition = ({
         onResult?.(currentTranscript, !!finalTranscript);
       };
 
-      recognition.onerror = (event: any) => {
+      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
         console.error('Speech recognition error:', event.error);
         let errorMessage = '';
         let userFriendlyMessage = '';
@@ -251,7 +295,11 @@ export const useVoiceRecognition = ({
 // Extend Window interface for TypeScript
 declare global {
   interface Window {
-    SpeechRecognition: any;
-    webkitSpeechRecognition: any;
+    SpeechRecognition?: {
+      new (): SpeechRecognition;
+    };
+    webkitSpeechRecognition?: {
+      new (): webkitSpeechRecognition;
+    };
   }
 }

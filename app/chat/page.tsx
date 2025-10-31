@@ -18,7 +18,6 @@ export default function ChatPage() {
     messages,
     isLoading,
     error,
-    sessionId,
     connect,
     disconnect,
     sendMessage,
