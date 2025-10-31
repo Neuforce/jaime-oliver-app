@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ChatWindow } from '../../components/chat/ChatWindow';
@@ -8,7 +8,7 @@ import { useChatSocket } from '../../hooks/useChatSocket';
 import { getConversationMessages, setCurrentConversation } from '../../lib/conversationHistory';
 import { ChatMessage } from '../../types/chat';
 
-export default function ChatPage() {
+function ChatPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [initialSessionId, setInitialSessionId] = useState<string | undefined>();
@@ -147,5 +147,17 @@ export default function ChatPage() {
         />
       </div>
     </div>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense fallback={
+      <div className="h-screen flex flex-col bg-white items-center justify-center">
+        <div className="text-gray-500">Loading...</div>
+      </div>
+    }>
+      <ChatPageContent />
+    </Suspense>
   );
 }
