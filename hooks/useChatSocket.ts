@@ -74,17 +74,47 @@ export const useChatSocket = (options: UseChatSocketOptions = {}) => {
         // Handle different types of messages
         const message = wsMessage as WebSocketMessage;
         if (message.type === 'message' && message.data) {
-          const chatMessage: ChatMessage = message.data;
-          
-          // Add message to state
-          setMessages(prev => {
-            const newMessages = [...prev, chatMessage];
-            saveConversationMessages(session, newMessages);
-            return newMessages;
-          });
-          
-          // Call the onMessage callback
-          options.onMessage?.(chatMessage);
+          const rawData = message.data as unknown;
+
+          let chatMessage: ChatMessage | null = null;
+          if (typeof rawData === 'object' && rawData !== null) {
+            const d = rawData as Record<string, unknown>;
+            const hasChatFields = typeof d.type === 'string'
+              && typeof d.sender === 'string'
+              && typeof d.content === 'string'
+              && typeof d.timestamp === 'string'
+              && typeof d.session_id === 'string';
+
+            if (hasChatFields) {
+              chatMessage = d as unknown as ChatMessage;
+            } else {
+              // Handle PushMessage-like payloads by normalizing to ChatMessage
+              const hasPushFields = typeof d.sender === 'string'
+                && typeof d.content === 'string'
+                && typeof d.timestamp === 'string';
+              if (hasPushFields) {
+                chatMessage = {
+                  type: 'message',
+                  sender: d.sender as ChatMessage['sender'],
+                  session_id: (d.session_id as string) || session,
+                  content: d.content as string,
+                  timestamp: d.timestamp as string,
+                };
+              }
+            }
+          }
+
+          if (chatMessage) {
+            // Add message to state
+            setMessages(prev => {
+              const newMessages = [...prev, chatMessage!];
+              saveConversationMessages(session, newMessages);
+              return newMessages;
+            });
+            
+            // Call the onMessage callback
+            options.onMessage?.(chatMessage);
+          }
         }
       });
 
