@@ -68,23 +68,125 @@ function ChatPageContent() {
             type: 'recipeList',
             sender: 'agent',
             session_id: newSessionId,
-            content: "Here's a small collection of easy, delicious, and healthy recipes that are flavorful but won't overwhelm you in the kitchen:",
+            content: "Ah, mate! Absolutely, I've got you covered.\n\nHere's a small collection of **easy, delicious,** and **healthy recipes** that are flavorful but won't overwhelm you in the kitchen:",
             timestamp: new Date(Date.now() + 1000).toISOString(),
             recipes: [
               {
                 title: 'Jacket potato',
                 duration: '1 hr',
-                imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800',
+                imageUrl: '/images/jacket-potato.png',
+                videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+                introText: "I'll guide you step by step as if we're cooking it together.\nMake sure you gather all your ingredients — keep them visible and ready to go.\nLay out your utensils — pot, pan, tongs, zester, grater, and ladle.\nCheck off each ingredient as you place it on your counter.\nAnd don't forget to check off each ingredient as you place it on your counter. That way, we're set to cook smoothly and enjoy every step!",
+                steps: [
+                  {
+                    title: 'Cook the pasta',
+                    duration: '20:00 min',
+                    icon: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400',
+                  },
+                  {
+                    title: 'Sauté aromatics',
+                    duration: '4:00 min',
+                    icon: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400',
+                  },
+                  {
+                    title: 'Make the sauce',
+                    duration: '10:00 min',
+                    icon: 'https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=400',
+                  },
+                  {
+                    title: 'Add the chickpeas',
+                    duration: '5:00 min',
+                    icon: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400',
+                  },
+                  {
+                    title: 'Combine with pasta',
+                    duration: '2:00 min',
+                    icon: 'https://images.unsplash.com/photo-1476718406336-bb5a87a40793?w=400',
+                  },
+                  {
+                    title: 'Finish and serve',
+                    duration: '2:00 min',
+                    icon: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400',
+                  },
+                ],
               },
               {
                 title: 'Chickpea arrabbiata',
                 duration: '15 min',
-                imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=801',
+                imageUrl: '/images/arrabbiata.png',
+                videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+                introText: "I'll guide you step by step as if we're cooking it together.\nMake sure you gather all your ingredients — keep them visible and ready to go.\nLay out your utensils — pot, pan, tongs, zester, grater, and ladle.\nCheck off each ingredient as you place it on your counter.\nNext, lay out your utensils — pot, pan, tongs, zester, grater, and ladle.\nAnd don't forget to check off each ingredient as you place it on your counter. That way, we're set to cook smoothly and enjoy every step!",
+                steps: [
+                  {
+                    title: 'Cook the pasta',
+                    duration: '20:00 min',
+                    icon: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400',
+                  },
+                  {
+                    title: 'Sauté aromatics',
+                    duration: '4:00 min',
+                    icon: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400',
+                  },
+                  {
+                    title: 'Make the sauce',
+                    duration: '10:00 min',
+                    icon: 'https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=400',
+                  },
+                  {
+                    title: 'Add the chickpeas',
+                    duration: '5:00 min',
+                    icon: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400',
+                  },
+                  {
+                    title: 'Combine with pasta',
+                    duration: '2:00 min',
+                    icon: 'https://images.unsplash.com/photo-1476718406336-bb5a87a40793?w=400',
+                  },
+                  {
+                    title: 'Finish and serve',
+                    duration: '2:00 min',
+                    icon: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400',
+                  },
+                ],
               },
               {
                 title: 'Happy fish pie',
                 duration: '1 hr 10 min',
-                imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=802',
+                imageUrl: '/images/fish-pie.png',
+                videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+                introText: "I'll guide you step by step as if we're cooking it together.\nMake sure you gather all your ingredients — keep them visible and ready to go.\nLay out your utensils — pot, pan, tongs, zester, grater, and ladle.\nCheck off each ingredient as you place it on your counter.\nAnd don't forget to check off each ingredient as you place it on your counter. That way, we're set to cook smoothly and enjoy every step!",
+                steps: [
+                  {
+                    title: 'Cook the pasta',
+                    duration: '20:00 min',
+                    icon: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400',
+                  },
+                  {
+                    title: 'Sauté aromatics',
+                    duration: '4:00 min',
+                    icon: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400',
+                  },
+                  {
+                    title: 'Make the sauce',
+                    duration: '10:00 min',
+                    icon: 'https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=400',
+                  },
+                  {
+                    title: 'Add the chickpeas',
+                    duration: '5:00 min',
+                    icon: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400',
+                  },
+                  {
+                    title: 'Combine with pasta',
+                    duration: '2:00 min',
+                    icon: 'https://images.unsplash.com/photo-1476718406336-bb5a87a40793?w=400',
+                  },
+                  {
+                    title: 'Finish and serve',
+                    duration: '2:00 min',
+                    icon: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400',
+                  },
+                ],
               },
             ],
           },
@@ -116,7 +218,7 @@ function ChatPageContent() {
       {/* Top bar */}
       <div className="px-4 pt-3 pb-2 flex items-center justify-center relative">
         <button
-          onClick={handleBackToHome}
+            onClick={handleBackToHome}
           aria-label="Back"
           className="absolute left-4 text-gray-500 hover:text-gray-800 text-xl"
         >

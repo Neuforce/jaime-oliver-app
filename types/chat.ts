@@ -1,7 +1,16 @@
+export interface RecipeStep {
+  title: string;
+  duration: string; // e.g. '20:00 min', '4:00 min'
+  icon?: string; // URL for step icon image
+}
+
 export interface RecipeItem {
   title: string;
   duration: string; // e.g. '1 hr', '15 min'
   imageUrl: string;
+  videoUrl?: string;
+  steps?: RecipeStep[];
+  introText?: string;
 }
 
 export interface ChatMessage {
