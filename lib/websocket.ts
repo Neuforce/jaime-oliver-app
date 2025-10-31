@@ -1,11 +1,11 @@
-import { WebSocketMessage, ChatMessage } from '../types/chat';
+import { WebSocketMessage } from '../types/chat';
 
 export class WebSocketManager {
   private ws: WebSocket | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 1000;
-  private listeners: Map<string, ((data: any) => void)[]> = new Map();
+  private listeners: Map<string, ((data: unknown) => void)[]> = new Map();
 
   constructor(private url: string) {}
 
@@ -73,14 +73,14 @@ export class WebSocketManager {
     }
   }
 
-  on(event: string, callback: (data: any) => void) {
+  on(event: string, callback: (data: unknown) => void) {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, []);
     }
     this.listeners.get(event)!.push(callback);
   }
 
-  off(event: string, callback: (data: any) => void) {
+  off(event: string, callback: (data: unknown) => void) {
     const eventListeners = this.listeners.get(event);
     if (eventListeners) {
       const index = eventListeners.indexOf(callback);
@@ -90,7 +90,7 @@ export class WebSocketManager {
     }
   }
 
-  private emit(event: string, data?: any) {
+  private emit(event: string, data?: unknown) {
     const eventListeners = this.listeners.get(event);
     if (eventListeners) {
       eventListeners.forEach(callback => callback(data));

@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 import { ChatMessage } from '../../types/chat';
 import { cn } from '../../lib/utils';
 import { VideoPlayer } from './VideoPlayer';
@@ -12,13 +13,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
   const isUser = message.sender === 'user';
   const isSystem = message.sender === 'system';
   const isRecipeList = message.type === 'recipeList';
-  
-  const formatTime = (timestamp: string) => {
-    return new Date(timestamp).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
 
   return (
     <div
@@ -49,7 +43,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
             <div className="p-4 space-y-5">
               {message.recipes.map((r, idx) => (
                 <div key={idx} className="flex flex-col">
-                  <img src={r.imageUrl} alt={r.title} className="w-full h-40 object-cover rounded-lg" />
+                  <Image src={r.imageUrl} alt={r.title} width={350} height={160} className="w-full h-40 object-cover rounded-lg" />
                   <div className="pt-2">
                     <div className="font-medium text-gray-800">{r.title}</div>
                     <div className="mt-1 text-xs text-gray-500 flex items-center gap-1">

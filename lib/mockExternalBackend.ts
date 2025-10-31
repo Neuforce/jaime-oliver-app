@@ -9,7 +9,7 @@ export interface ExternalMessage {
   type: 'message' | 'response' | 'error' | 'status';
   session_id: string;
   content?: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }
 
 export class MockExternalBackend {

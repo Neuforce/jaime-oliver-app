@@ -83,7 +83,7 @@ export const VoiceInstructions: React.FC<VoiceInstructionsProps> = ({
           <div className="bg-blue-50 p-3 rounded-lg">
             <p className="text-sm text-blue-800">
               <strong>💡 Pro tip:</strong> Perfect for when your hands are busy cooking! 
-              Ask things like "How do I make pasta?" or "What temperature should I cook chicken?"
+              Ask things like &quot;How do I make pasta?&quot; or &quot;What temperature should I cook chicken?&quot;
             </p>
           </div>
         </div>

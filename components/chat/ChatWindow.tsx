@@ -8,14 +8,12 @@ interface ChatWindowProps {
   messages: ChatMessage[];
   onSendMessage: (message: string) => void;
   isLoading?: boolean;
-  sessionId?: string;
 }
 
 export const ChatWindow: React.FC<ChatWindowProps> = ({
   messages,
   onSendMessage,
   isLoading = false,
-  sessionId,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [showVoiceInstructions, setShowVoiceInstructions] = useState(false);

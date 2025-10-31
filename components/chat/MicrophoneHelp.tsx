@@ -63,7 +63,7 @@ export const MicrophoneHelp: React.FC<MicrophoneHelpProps> = ({
 
         <div className="mb-4">
           <p className="text-sm text-gray-600 mb-4">
-            The voice input feature needs access to your microphone. Here's how to enable it:
+            The voice input feature needs access to your microphone. Here&apos;s how to enable it:
           </p>
 
           {/* Browser Tabs */}
@@ -71,7 +71,7 @@ export const MicrophoneHelp: React.FC<MicrophoneHelpProps> = ({
             {Object.entries(browserInstructions).map(([key, browser]) => (
               <button
                 key={key}
-                onClick={() => setActiveTab(key as any)}
+                onClick={() => setActiveTab(key as 'chrome' | 'safari' | 'edge')}
                 className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === key
                     ? 'border-blue-500 text-blue-600'
@@ -107,7 +107,7 @@ export const MicrophoneHelp: React.FC<MicrophoneHelpProps> = ({
                 <li>• Make sure no other app is using your microphone</li>
                 <li>• Check if your microphone is working in other applications</li>
                 <li>• Try refreshing the page after changing permissions</li>
-                <li>• On mobile: Check your device's microphone permissions</li>
+                <li>• On mobile: Check your device&apos;s microphone permissions</li>
               </ul>
             </div>
           </div>

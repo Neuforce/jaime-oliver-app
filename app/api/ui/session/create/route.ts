@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     const sessionId = uuidv4();
     const timestamp = new Date().toISOString();

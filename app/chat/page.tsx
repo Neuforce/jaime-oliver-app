@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ChatWindow } from '../../components/chat/ChatWindow';
-import { Button } from '../../components/ui/Button';
 import { useChatSocket } from '../../hooks/useChatSocket';
 import { getConversationMessages, setCurrentConversation } from '../../lib/conversationHistory';
 import { ChatMessage } from '../../types/chat';
@@ -12,20 +11,17 @@ import { ChatMessage } from '../../types/chat';
 export default function ChatPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [initialSessionId, setInitialSessionId] = useState<string | undefined>();
   const [initialMessages, setInitialMessages] = useState<ChatMessage[]>([]);
   
   const {
     messages,
-    isConnected,
     isLoading,
     error,
     sessionId,
     connect,
     disconnect,
     sendMessage,
-    clearMessages,
   } = useChatSocket({
     initialSessionId,
     initialMessages,
@@ -46,7 +42,6 @@ export default function ChatPage() {
       const starter = searchParams.get('starter');
       
       if (conversationId) {
-        setIsLoadingHistory(true);
         try {
           const savedMessages = getConversationMessages(conversationId);
           setCurrentConversation(conversationId);
@@ -56,8 +51,6 @@ export default function ChatPage() {
           setInitialMessages(savedMessages);
         } catch (error) {
           console.error('Error loading conversation:', error);
-        } finally {
-          setIsLoadingHistory(false);
         }
       } else if (starter) {
         // Prime a new session with the starter and a mocked recipe list response
@@ -119,10 +112,6 @@ export default function ChatPage() {
     router.push('/');
   };
 
-  const handleClearChat = () => {
-    clearMessages();
-  };
-
   return (
     <div className="h-screen flex flex-col bg-white">
       {/* Top bar */}
@@ -156,7 +145,6 @@ export default function ChatPage() {
           messages={messages}
           onSendMessage={sendMessage}
           isLoading={isLoading}
-          sessionId={sessionId}
         />
       </div>
     </div>

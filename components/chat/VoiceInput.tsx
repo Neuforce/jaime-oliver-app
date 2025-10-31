@@ -18,12 +18,10 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
   const {
     isSupported,
     isListening,
-    transcript,
     error,
     microphonePermission,
     startListening,
     stopListening,
-    checkMicrophonePermission,
   } = useVoiceRecognition({
     language,
     continuous: false,

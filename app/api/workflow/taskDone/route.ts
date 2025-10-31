@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { WorkflowMessagePayload } from '../../../../types/chat';
-import { sendToSession } from '../../ws/route';
+import { sendToSession } from '../../../../lib/wsHelpers';
 
 export async function POST(request: NextRequest) {
   try {
