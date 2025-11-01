@@ -9,6 +9,18 @@ interface RecipeAccordionProps {
   onExpandChange?: (isExpanded: boolean) => void;
 }
 
+// Simple function to convert markdown bold to HTML
+const renderMarkdown = (text: string) => {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      const boldText = part.slice(2, -2);
+      return <strong key={index}>{boldText}</strong>;
+    }
+    return <span key={index}>{part}</span>;
+  });
+};
+
 export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExpandChange }) => {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [videoModalOpen, setVideoModalOpen] = useState<boolean>(false);
@@ -60,28 +72,15 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
                     height={160}
                     className="w-full h-40 object-cover rounded-lg"
                   />
-                  <div className="pt-2 flex items-center justify-between">
-                    <div>
-                      <div className="font-medium text-gray-800">{recipe.title}</div>
-                      <div className="mt-1 text-xs text-gray-500 flex items-center gap-1">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <circle cx="12" cy="12" r="9" stroke="#2AB3A6" strokeWidth="2"/>
-                          <path d="M12 7v5l3 2" stroke="#2AB3A6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                        <span>{recipe.duration}</span>
-                      </div>
+                  <div className="pt-2">
+                    <div className="font-medium text-gray-800">{recipe.title}</div>
+                    <div className="mt-1 text-xs text-gray-500 flex items-center gap-1">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="12" r="9" stroke="#2AB3A6" strokeWidth="2"/>
+                        <path d="M12 7v5l3 2" stroke="#2AB3A6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      <span>{recipe.duration}</span>
                     </div>
-                    {isExpanded && (
-                      <button
-                        onClick={(e) => handlePlayClick(e)}
-                        className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors flex-shrink-0"
-                        aria-label="Play video"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M8 5v14l11-7z" fill="#2AB3A6" />
-                        </svg>
-                      </button>
-                    )}
                   </div>
                 </div>
 
@@ -90,9 +89,9 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
                   <div className="mt-4 space-y-4">
                     {/* Intro Text */}
                     {recipe.introText && (
-                      <div className="text-sm text-gray-700 space-y-2 whitespace-pre-wrap">
+                      <div className="text-sm text-gray-700 space-y-2">
                         {recipe.introText.split('\n').map((line, i) => (
-                          <p key={i}>{line}</p>
+                          <p key={i}>{renderMarkdown(line)}</p>
                         ))}
                       </div>
                     )}
@@ -106,22 +105,49 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
                       <span className="text-sm font-medium text-gray-800">Ingredients and utensils</span>
                     </button>
 
+                    {/* Video Trigger Card */}
+                    <button
+                      onClick={(e) => handlePlayClick(e)}
+                      className="w-full flex items-center gap-3 px-4 py-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left"
+                    >
+                      <div className="relative w-16 h-16 flex-shrink-0 rounded-full overflow-hidden">
+                        <Image
+                          src={recipe.imageUrl}
+                          alt={recipe.title}
+                          width={64}
+                          height={64}
+                          className="object-cover"
+                        />
+                      </div>
+                      <div className="flex-1 font-medium text-gray-800">{recipe.title}</div>
+                      <div className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 border border-gray-300 flex items-center justify-center transition-colors flex-shrink-0 shadow-sm">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M8 5v14l11-7z" fill="#2AB3A6" />
+                        </svg>
+                      </div>
+                    </button>
+
                     {/* Recipe Steps */}
                     {recipe.steps && recipe.steps.length > 0 && (
                       <div className="space-y-3">
                         {recipe.steps.map((step, stepIdx) => (
                           <div key={stepIdx} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                            <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-white border border-gray-200 flex items-center justify-center">
+                            <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-white border border-gray-200 overflow-hidden">
                               {step.icon ? (
                                 <Image
                                   src={step.icon}
                                   alt={step.title}
-                                  width={40}
-                                  height={40}
-                                  className="w-10 h-10 object-cover rounded-lg"
+                                  width={48}
+                                  height={48}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    // Fallback si la imagen está rota
+                                    const target = e.target as HTMLImageElement;
+                                    target.src = 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400';
+                                  }}
                                 />
                               ) : (
-                                <div className="w-8 h-8 bg-gray-200 rounded"></div>
+                                <div className="w-full h-full bg-gray-200"></div>
                               )}
                             </div>
                             <div className="flex-1">

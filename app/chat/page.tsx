@@ -76,7 +76,7 @@ function ChatPageContent() {
                 duration: '1 hr',
                 imageUrl: '/images/jacket-potato.png',
                 videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-                introText: "I'll guide you step by step as if we're cooking it together.\nMake sure you gather all your ingredients — keep them visible and ready to go.\nLay out your utensils — pot, pan, tongs, zester, grater, and ladle.\nCheck off each ingredient as you place it on your counter.\nAnd don't forget to check off each ingredient as you place it on your counter. That way, we're set to cook smoothly and enjoy every step!",
+                introText: "I'll guide you step by step as if we're cooking it together.\n**Make sure you gather all your ingredients** — keep them visible and ready to go.\n**Lay out your utensils** — pot, pan, tongs, zester, grater, and ladle.\n**Check off each ingredient** as you place it on your counter.\nAnd don't forget to check off each ingredient as you place it on your counter. That way, we're set to cook smoothly and enjoy every step!",
                 steps: [
                   {
                     title: 'Cook the pasta',
@@ -101,7 +101,7 @@ function ChatPageContent() {
                   {
                     title: 'Combine with pasta',
                     duration: '2:00 min',
-                    icon: 'https://images.unsplash.com/photo-1476718406336-bb5a87a40793?w=400',
+                    icon: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400',
                   },
                   {
                     title: 'Finish and serve',
@@ -115,7 +115,7 @@ function ChatPageContent() {
                 duration: '15 min',
                 imageUrl: '/images/arrabbiata.png',
                 videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
-                introText: "I'll guide you step by step as if we're cooking it together.\nMake sure you gather all your ingredients — keep them visible and ready to go.\nLay out your utensils — pot, pan, tongs, zester, grater, and ladle.\nCheck off each ingredient as you place it on your counter.\nNext, lay out your utensils — pot, pan, tongs, zester, grater, and ladle.\nAnd don't forget to check off each ingredient as you place it on your counter. That way, we're set to cook smoothly and enjoy every step!",
+                introText: "I'll guide you step by step as if we're cooking it together.\n**Make sure you gather all your ingredients** — keep them visible and ready to go.\n**Lay out your utensils** — pot, pan, tongs, zester, grater, and ladle.\n**Check off each ingredient** as you place it on your counter.\nNext, lay out your utensils — pot, pan, tongs, zester, grater, and ladle.\nAnd don't forget to check off each ingredient as you place it on your counter. That way, we're set to cook smoothly and enjoy every step!",
                 steps: [
                   {
                     title: 'Cook the pasta',
@@ -140,7 +140,7 @@ function ChatPageContent() {
                   {
                     title: 'Combine with pasta',
                     duration: '2:00 min',
-                    icon: 'https://images.unsplash.com/photo-1476718406336-bb5a87a40793?w=400',
+                    icon: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400',
                   },
                   {
                     title: 'Finish and serve',
@@ -154,7 +154,7 @@ function ChatPageContent() {
                 duration: '1 hr 10 min',
                 imageUrl: '/images/fish-pie.png',
                 videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-                introText: "I'll guide you step by step as if we're cooking it together.\nMake sure you gather all your ingredients — keep them visible and ready to go.\nLay out your utensils — pot, pan, tongs, zester, grater, and ladle.\nCheck off each ingredient as you place it on your counter.\nAnd don't forget to check off each ingredient as you place it on your counter. That way, we're set to cook smoothly and enjoy every step!",
+                introText: "I'll guide you step by step as if we're cooking it together.\n**Make sure you gather all your ingredients** — keep them visible and ready to go.\n**Lay out your utensils** — pot, pan, tongs, zester, grater, and ladle.\n**Check off each ingredient** as you place it on your counter.\nAnd don't forget to check off each ingredient as you place it on your counter. That way, we're set to cook smoothly and enjoy every step!",
                 steps: [
                   {
                     title: 'Cook the pasta',
@@ -179,7 +179,7 @@ function ChatPageContent() {
                   {
                     title: 'Combine with pasta',
                     duration: '2:00 min',
-                    icon: 'https://images.unsplash.com/photo-1476718406336-bb5a87a40793?w=400',
+                    icon: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400',
                   },
                   {
                     title: 'Finish and serve',
@@ -215,38 +215,40 @@ function ChatPageContent() {
 
   return (
     <div className="h-screen flex flex-col bg-white">
-      {/* Top bar */}
-      <div className="px-4 pt-3 pb-2 flex items-center justify-center relative">
-        <button
-            onClick={handleBackToHome}
-          aria-label="Back"
-          className="absolute left-4 text-gray-500 hover:text-gray-800 text-xl"
-        >
-          ×
-        </button>
-        <Image src="/jamie-heart.png" alt="Jamie Oliver" width={150} height={20} />
-      </div>
+      <div className="w-full mx-auto md:max-w-[700px] flex flex-col h-full">
+        {/* Top bar */}
+        <div className="px-4 pt-3 pb-2 flex items-center justify-center relative">
+          <button
+              onClick={handleBackToHome}
+            aria-label="Back"
+            className="absolute left-4 text-gray-500 hover:text-gray-800 text-xl"
+          >
+            ×
+          </button>
+          <Image src="/jamie-heart.png" alt="Jamie Oliver" width={150} height={20} />
+        </div>
 
-      {/* Error Display */}
-      {error && (
-        <div className="bg-red-50 border-l-4 border-red-400 p-4">
-          <div className="flex">
-            <div className="ml-3">
-              <p className="text-sm text-red-700">
-                <strong>Error:</strong> {error}
-              </p>
+        {/* Error Display */}
+        {error && (
+          <div className="bg-red-50 border-l-4 border-red-400 p-4">
+            <div className="flex">
+              <div className="ml-3">
+                <p className="text-sm text-red-700">
+                  <strong>Error:</strong> {error}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Chat Window */}
-      <div className="flex-1 overflow-hidden">
-        <ChatWindow
-          messages={messages}
-          onSendMessage={sendMessage}
-          isLoading={isLoading}
-        />
+        {/* Chat Window */}
+        <div className="flex-1 overflow-hidden">
+          <ChatWindow
+            messages={messages}
+            onSendMessage={sendMessage}
+            isLoading={isLoading}
+          />
+        </div>
       </div>
     </div>
   );
