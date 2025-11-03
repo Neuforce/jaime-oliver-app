@@ -39,19 +39,6 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
     setVideoModalOpen(true);
   };
 
-  const getRandomImageUrl = (seed: number) => {
-    // Generate a pseudo-random image URL based on seed
-    const images = [
-      'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400',
-      'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400',
-      'https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=400',
-      'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400',
-      'https://images.unsplash.com/photo-1476718406336-bb5a87a40793?w=400',
-      'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400',
-    ];
-    return images[seed % images.length];
-  };
-
   return (
     <>
       <div className="mt-3 rounded-xl border border-gray-200 bg-white">
@@ -247,7 +234,7 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-4">
               <p className="text-sm text-gray-600 mb-6">
-                Take a quick look at your ingredients and utensils to make sure you're all set before cooking.
+                Take a quick look at your ingredients and utensils to make sure you&apos;re all set before cooking.
               </p>
 
               {/* Ingredients Section */}
@@ -264,6 +251,7 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
                   {recipes[currentRecipeIndex].ingredients?.map((ingredient, idx) => (
                     <div key={idx} className="flex items-center gap-3">
                       <div className="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={ingredient.imageUrl}
                           alt={ingredient.name}
@@ -347,7 +335,7 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-4">
               <p className="text-sm text-gray-600 mb-6">
-                Take a quick look at your ingredients and utensils to make sure you're all set before cooking.
+                Take a quick look at your ingredients and utensils to make sure you&apos;re all set before cooking.
               </p>
 
               {/* Utensils Section */}
@@ -364,6 +352,7 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
                   {recipes[currentRecipeIndex].utensils?.map((utensil, idx) => (
                     <div key={idx} className="flex items-center gap-3">
                       <div className="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={utensil.imageUrl}
                           alt={utensil.name}
