@@ -24,6 +24,9 @@ const renderMarkdown = (text: string) => {
 export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExpandChange }) => {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [videoModalOpen, setVideoModalOpen] = useState<boolean>(false);
+  const [ingredientsModalOpen, setIngredientsModalOpen] = useState<boolean>(false);
+  const [utensilsModalOpen, setUtensilsModalOpen] = useState<boolean>(false);
+  const [currentRecipeIndex, setCurrentRecipeIndex] = useState<number | null>(null);
 
   const handleRecipeClick = (index: number) => {
     const newExpandedIndex = expandedIndex === index ? null : index;
@@ -97,7 +100,14 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
                     )}
 
                     {/* Ingredients and Utensils Button */}
-                    <button className="w-full flex items-center gap-3 px-4 py-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCurrentRecipeIndex(idx);
+                        setIngredientsModalOpen(true);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left"
+                    >
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M9 11l3 3L22 4" stroke="#2AB3A6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                         <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke="#2AB3A6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -200,6 +210,206 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
                 className="w-full h-full"
                 style={{ minHeight: '315px' }}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Ingredients Modal */}
+      {ingredientsModalOpen && currentRecipeIndex !== null && recipes[currentRecipeIndex] && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+          onClick={() => {
+            setIngredientsModalOpen(false);
+            setCurrentRecipeIndex(null);
+          }}
+        >
+          <div
+            className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="text-xl font-semibold text-[#2AB3A6]">Review ingredients</h2>
+              <button
+                onClick={() => {
+                  setIngredientsModalOpen(false);
+                  setCurrentRecipeIndex(null);
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-4">
+              <p className="text-sm text-gray-600 mb-6">
+                Take a quick look at your ingredients and utensils to make sure you're all set before cooking.
+              </p>
+
+              {/* Ingredients Section */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-semibold text-[#2AB3A6]">Ingredients</h3>
+                  <span className="text-lg font-semibold text-[#2AB3A6]">
+                    {recipes[currentRecipeIndex].ingredients?.length || 0}/
+                    {recipes[currentRecipeIndex].ingredients?.length || 0}
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {recipes[currentRecipeIndex].ingredients?.map((ingredient, idx) => (
+                    <div key={idx} className="flex items-center gap-3">
+                      <div className="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
+                        <img
+                          src={ingredient.imageUrl}
+                          alt={ingredient.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400';
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-gray-800 truncate">{ingredient.name}</div>
+                        <div className="text-xs text-gray-500">{ingredient.quantity}</div>
+                      </div>
+                      <div className="flex-shrink-0">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <circle cx="12" cy="12" r="10" fill="#2AB3A6"/>
+                          <path d="M9 12l2 2 4-4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="p-4 border-t flex gap-3">
+              <button
+                onClick={() => {
+                  setIngredientsModalOpen(false);
+                  setCurrentRecipeIndex(null);
+                }}
+                className="flex-1 px-4 py-3 border-2 border-[#2AB3A6] text-[#2AB3A6] rounded-lg font-medium hover:bg-[#2AB3A6] hover:text-white transition-colors"
+              >
+                Skip
+              </button>
+              <button
+                onClick={() => {
+                  setIngredientsModalOpen(false);
+                  setUtensilsModalOpen(true);
+                }}
+                className="flex-1 px-4 py-3 bg-[#2AB3A6] text-white rounded-lg font-medium hover:bg-[#239e92] transition-colors"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Utensils Modal */}
+      {utensilsModalOpen && currentRecipeIndex !== null && recipes[currentRecipeIndex] && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+          onClick={() => {
+            setUtensilsModalOpen(false);
+            setCurrentRecipeIndex(null);
+          }}
+        >
+          <div
+            className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="text-xl font-semibold text-[#2AB3A6]">Review utensils</h2>
+              <button
+                onClick={() => {
+                  setUtensilsModalOpen(false);
+                  setCurrentRecipeIndex(null);
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-4">
+              <p className="text-sm text-gray-600 mb-6">
+                Take a quick look at your ingredients and utensils to make sure you're all set before cooking.
+              </p>
+
+              {/* Utensils Section */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-semibold text-[#2AB3A6]">Utensils</h3>
+                  <span className="text-lg font-semibold text-[#2AB3A6]">
+                    {recipes[currentRecipeIndex].utensils?.length || 0}/
+                    {recipes[currentRecipeIndex].utensils?.length || 0}
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {recipes[currentRecipeIndex].utensils?.map((utensil, idx) => (
+                    <div key={idx} className="flex items-center gap-3">
+                      <div className="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
+                        <img
+                          src={utensil.imageUrl}
+                          alt={utensil.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400';
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-gray-800 truncate">{utensil.name}</div>
+                      </div>
+                      <div className="flex-shrink-0">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <circle cx="12" cy="12" r="10" fill="#2AB3A6"/>
+                          <path d="M9 12l2 2 4-4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="p-4 border-t flex gap-3">
+              <button
+                onClick={() => {
+                  setUtensilsModalOpen(false);
+                  setCurrentRecipeIndex(null);
+                }}
+                className="flex-1 px-4 py-3 border-2 border-[#2AB3A6] text-[#2AB3A6] rounded-lg font-medium hover:bg-[#2AB3A6] hover:text-white transition-colors"
+              >
+                Skip
+              </button>
+              <button
+                onClick={() => {
+                  setUtensilsModalOpen(false);
+                  setCurrentRecipeIndex(null);
+                  // TODO: Continue with first step of recipe
+                }}
+                className="flex-1 px-4 py-3 bg-[#2AB3A6] text-white rounded-lg font-medium hover:bg-[#239e92] transition-colors"
+              >
+                Next
+              </button>
             </div>
           </div>
         </div>
