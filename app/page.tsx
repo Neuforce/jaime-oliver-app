@@ -20,6 +20,8 @@ export default function HomePage() {
     language: 'en-US',
     continuous: true,
     interimResults: true,
+    silenceTimeout: 2000, // Wait 2 seconds of silence before sending
+    autoStart: true, // Automatically start listening when page loads
     onResult: (text, isFinal) => {
       if (isFinal && text.trim()) {
         beginChat(text.trim());

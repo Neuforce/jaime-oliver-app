@@ -53,6 +53,8 @@ interface UseVoiceRecognitionOptions {
   onError?: (error: string) => void;
   onStart?: () => void;
   onEnd?: () => void;
+  silenceTimeout?: number; // Time in ms to wait after speech ends before triggering onResult
+  autoStart?: boolean; // Automatically start listening when component mounts
 }
 
 interface UseVoiceRecognitionReturn {
@@ -76,6 +78,8 @@ export const useVoiceRecognition = ({
   onError,
   onStart,
   onEnd,
+  silenceTimeout = 2000, // Default 2 seconds of silence before considering speech ended
+  autoStart = false,
 }: UseVoiceRecognitionOptions = {}): UseVoiceRecognitionReturn => {
   const [isSupported, setIsSupported] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -83,6 +87,9 @@ export const useVoiceRecognition = ({
   const [error, setError] = useState<string | null>(null);
   const [microphonePermission, setMicrophonePermission] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown');
   const recognitionRef = useRef<SpeechRecognition | webkitSpeechRecognition | null>(null);
+  const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastTranscriptRef = useRef<string>('');
+  const isRestartingRef = useRef<boolean>(false);
 
   const reset = useCallback(() => {
     setTranscript('');
@@ -216,7 +223,36 @@ export const useVoiceRecognition = ({
 
         const currentTranscript = finalTranscript || interimTranscript;
         setTranscript(currentTranscript);
-        onResult?.(currentTranscript, !!finalTranscript);
+        
+        // Clear any existing silence timer
+        if (silenceTimerRef.current) {
+          clearTimeout(silenceTimerRef.current);
+          silenceTimerRef.current = null;
+        }
+
+        if (finalTranscript) {
+          // If we have final results, trigger immediately
+          lastTranscriptRef.current = finalTranscript;
+          onResult?.(finalTranscript, true);
+        } else if (currentTranscript && continuous) {
+          // If continuous mode and we have interim results, set up silence detection
+          lastTranscriptRef.current = currentTranscript;
+          
+          // Set a timer: if no new results come in within silenceTimeout, consider it done
+          silenceTimerRef.current = setTimeout(() => {
+            if (lastTranscriptRef.current.trim()) {
+              onResult?.(lastTranscriptRef.current.trim(), true);
+              lastTranscriptRef.current = '';
+            }
+            silenceTimerRef.current = null;
+          }, silenceTimeout);
+          
+          // Also call with interim results for real-time feedback
+          onResult?.(currentTranscript, false);
+        } else {
+          // Non-continuous mode or no interim results
+          onResult?.(currentTranscript, !!finalTranscript);
+        }
       };
 
       recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
@@ -260,8 +296,39 @@ export const useVoiceRecognition = ({
       };
 
       recognition.onend = () => {
+        // Clear silence timer when recognition ends
+        if (silenceTimerRef.current) {
+          clearTimeout(silenceTimerRef.current);
+          silenceTimerRef.current = null;
+        }
+        
         setIsListening(false);
+        
+        // If we have a pending transcript and continuous mode, trigger it
+        if (continuous && lastTranscriptRef.current.trim()) {
+          onResult?.(lastTranscriptRef.current.trim(), true);
+          lastTranscriptRef.current = '';
+        }
+        
         onEnd?.();
+        
+        // If continuous mode, restart automatically after a short delay
+        // This ensures the recognition keeps listening
+        if (continuous && recognitionRef.current && !isRestartingRef.current) {
+          isRestartingRef.current = true;
+          setTimeout(() => {
+            // Only restart if recognition still exists
+            if (recognitionRef.current) {
+              try {
+                recognitionRef.current.start();
+              } catch (err) {
+                // Ignore errors when restarting (might already be started or component unmounted)
+                console.debug('Could not restart recognition:', err);
+              }
+            }
+            isRestartingRef.current = false;
+          }, 200);
+        }
       };
 
       recognitionRef.current = recognition;
@@ -273,11 +340,28 @@ export const useVoiceRecognition = ({
     }
 
     return () => {
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+      }
       if (recognitionRef.current) {
         recognitionRef.current.stop();
       }
     };
-  }, [language, continuous, interimResults, maxAlternatives, onResult, onError, onStart, onEnd]);
+  }, [language, continuous, interimResults, maxAlternatives, onResult, onError, onStart, onEnd, silenceTimeout, isListening]);
+
+  // Auto-start if enabled
+  useEffect(() => {
+    if (autoStart && isSupported && !isListening && recognitionRef.current && microphonePermission !== 'denied') {
+      // Delay to ensure everything is set up
+      const timer = setTimeout(() => {
+        if (recognitionRef.current) {
+          startListening();
+        }
+      }, 1000); // Increased delay to ensure permissions are checked
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart, isSupported, microphonePermission]); // Removed isListening and startListening to avoid infinite loops
 
   return {
     isSupported,

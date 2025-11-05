@@ -24,8 +24,9 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
     stopListening,
   } = useVoiceRecognition({
     language,
-    continuous: false,
+    continuous: true, // Enable continuous listening
     interimResults: true,
+    silenceTimeout: 2000, // Wait 2 seconds of silence before sending
     onResult: (text, isFinal) => {
       if (isFinal && text.trim()) {
         onVoiceResult(text.trim());
