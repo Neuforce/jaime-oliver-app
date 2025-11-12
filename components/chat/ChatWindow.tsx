@@ -17,6 +17,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [showVoiceInstructions, setShowVoiceInstructions] = useState(false);
+  const [hasExpandedRecipe, setHasExpandedRecipe] = useState(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -51,7 +52,12 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         ) : (
           messages.map((message, index) => (
-            <MessageBubble key={`${message.timestamp}-${index}`} message={message} />
+            <MessageBubble 
+              key={`${message.timestamp}-${index}`} 
+              message={message}
+              hasExpandedRecipe={hasExpandedRecipe}
+              onRecipeExpandedChange={setHasExpandedRecipe}
+            />
           ))
         )}
         

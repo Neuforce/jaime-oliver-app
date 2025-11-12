@@ -8,6 +8,8 @@ import { RecipeAccordion } from './RecipeAccordion';
 
 interface MessageBubbleProps {
   message: ChatMessage;
+  hasExpandedRecipe?: boolean;
+  onRecipeExpandedChange?: (expanded: boolean) => void;
 }
 
 // Simple function to convert markdown bold to HTML
@@ -22,11 +24,17 @@ const renderMarkdown = (text: string) => {
   });
 };
 
-export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
+export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, hasExpandedRecipe = false, onRecipeExpandedChange }) => {
   const [isRecipeExpanded, setIsRecipeExpanded] = useState(false);
+  const [selectedRecipeTitle, setSelectedRecipeTitle] = useState<string | null>(null);
   const isUser = message.sender === 'user';
   const isSystem = message.sender === 'system';
   const isRecipeList = message.type === 'recipeList';
+
+  const handleRecipeExpandedChange = (expanded: boolean) => {
+    setIsRecipeExpanded(expanded);
+    onRecipeExpandedChange?.(expanded);
+  };
 
   return (
     <div
@@ -38,7 +46,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
       <div className={cn('w-full', isRecipeList ? '' : '')}>
         {isUser ? (
           // User message: gray bubble, wide - hide when recipe is expanded
-          !isRecipeExpanded && (
+          !hasExpandedRecipe && (
             <div className="max-w-[85%] rounded-2xl bg-gray-200 text-gray-900">
               <div className="text-sm whitespace-pre-wrap break-words px-4 py-3">
                 {message.content}
@@ -56,7 +64,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
             {message.recipes && (
               <RecipeAccordion
                 recipes={message.recipes}
-                onExpandChange={setIsRecipeExpanded}
+                onExpandChange={handleRecipeExpandedChange}
+                onRecipeSelected={setSelectedRecipeTitle}
               />
             )}
           </>

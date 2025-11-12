@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { RecipeItem } from '../../types/chat';
 
 interface RecipeAccordionProps {
   recipes: RecipeItem[];
   onExpandChange?: (isExpanded: boolean) => void;
+  onRecipeSelected?: (recipeTitle: string | null) => void;
 }
 
 // Simple function to convert markdown bold to HTML
@@ -21,17 +22,25 @@ const renderMarkdown = (text: string) => {
   });
 };
 
-export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExpandChange }) => {
+export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExpandChange, onRecipeSelected }) => {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [videoModalOpen, setVideoModalOpen] = useState<boolean>(false);
   const [ingredientsModalOpen, setIngredientsModalOpen] = useState<boolean>(false);
   const [utensilsModalOpen, setUtensilsModalOpen] = useState<boolean>(false);
   const [currentRecipeIndex, setCurrentRecipeIndex] = useState<number | null>(null);
+  const [selectedIngredients, setSelectedIngredients] = useState<Set<number>>(new Set());
+  const [selectedUtensils, setSelectedUtensils] = useState<Set<number>>(new Set());
 
   const handleRecipeClick = (index: number) => {
     const newExpandedIndex = expandedIndex === index ? null : index;
     setExpandedIndex(newExpandedIndex);
     onExpandChange?.(newExpandedIndex !== null);
+    // Notify parent about selected recipe
+    if (newExpandedIndex !== null) {
+      onRecipeSelected?.(recipes[newExpandedIndex].title);
+    } else {
+      onRecipeSelected?.(null);
+    }
   };
 
   const handlePlayClick = (e: React.MouseEvent) => {
@@ -39,9 +48,48 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
     setVideoModalOpen(true);
   };
 
+  const handleIngredientToggle = (index: number) => {
+    setSelectedIngredients(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
+  };
+
+  const handleUtensilToggle = (index: number) => {
+    setSelectedUtensils(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
+  };
+
+  // Initialize selected items when modal opens
+  useEffect(() => {
+    if (ingredientsModalOpen && currentRecipeIndex !== null && recipes[currentRecipeIndex]) {
+      const ingredients = recipes[currentRecipeIndex].ingredients || [];
+      setSelectedIngredients(new Set(ingredients.map((_, idx) => idx)));
+    }
+  }, [ingredientsModalOpen, currentRecipeIndex, recipes]);
+
+  useEffect(() => {
+    if (utensilsModalOpen && currentRecipeIndex !== null && recipes[currentRecipeIndex]) {
+      const utensils = recipes[currentRecipeIndex].utensils || [];
+      setSelectedUtensils(new Set(utensils.map((_, idx) => idx)));
+    }
+  }, [utensilsModalOpen, currentRecipeIndex, recipes]);
+
   return (
     <>
-      <div className="mt-3 rounded-xl border border-gray-200 bg-white">
+      <div className="mt-3 rounded-xl bg-white">
         <div className="px-4 py-3 border-b">
           <div className="text-base font-semibold">My recommendations</div>
         </div>
@@ -62,6 +110,7 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
                     height={160}
                     className="w-full h-40 object-cover rounded-lg"
                   />
+                  {!isExpanded && (
                   <div className="pt-2">
                     <div className="font-medium text-gray-800">{recipe.title}</div>
                     <div className="mt-1 text-xs text-gray-500 flex items-center gap-1">
@@ -72,11 +121,18 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
                       <span>{recipe.duration}</span>
                     </div>
                   </div>
+                  )}
                 </div>
 
                 {/* Expanded Content */}
                 {isExpanded && (
                   <div className="mt-4 space-y-4">
+                    {/* Recipe Title in Gray Background */}
+                    <div className="bg-gray-100 rounded-lg px-4 py-3">
+                      <div className="text-sm font-medium" style={{ color: '#090909' }}>
+                        {recipe.title}
+                      </div>
+                    </div>
                     {/* Intro Text */}
                     {recipe.introText && (
                       <div className="text-sm text-gray-700 space-y-2">
@@ -124,6 +180,8 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
                       </div>
                     </button>
 
+                    {/* Recipe Steps and Start Cooking Container */}
+                    <div className="border border-gray-200 rounded-lg p-4 space-y-4">
                     {/* Recipe Steps */}
                     {recipe.steps && recipe.steps.length > 0 && (
                       <div className="space-y-3">
@@ -160,6 +218,17 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
                     <button className="w-full px-4 py-3 bg-[#2AB3A6] text-white rounded-lg font-medium hover:bg-[#239e92] transition-colors">
                       Start cooking
                     </button>
+                    </div>
+
+                    {/* Tip Text */}
+                    <div className="text-sm text-gray-700 mt-3">
+                      <p>
+                        Hey, <strong>quick tip before we dive in</strong> — let me know when you finish each step. That way, I can keep up with you. Ready to start cooking?
+                      </p>
+                    </div>
+
+                    {/* Separator Line */}
+                    <div className="border-t border-gray-200 my-3"></div>
                   </div>
                 )}
               </div>
@@ -184,20 +253,17 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
               </svg>
             </button>
           </div>
-          <div className="w-full h-full flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
-            <div className="w-full aspect-video max-w-7xl">
+          <div className="w-full h-full" onClick={(e) => e.stopPropagation()}>
               <iframe
                 width="100%"
                 height="100%"
-                src="https://www.youtube.com/embed/FXnHPAYMENo?autoplay=1&mute=0&controls=1&rel=0&playsinline=1"
+              src="https://www.youtube.com/embed/XgNCkKr4gqM?autoplay=1&mute=0&controls=1&rel=0&playsinline=1&modestbranding=1"
                 title="Recipe Video"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen
                 className="w-full h-full"
-                style={{ minHeight: '315px' }}
               />
-            </div>
           </div>
         </div>
       )}
@@ -242,14 +308,20 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-lg font-semibold text-[#2AB3A6]">Ingredients</h3>
                   <span className="text-lg font-semibold text-[#2AB3A6]">
-                    {recipes[currentRecipeIndex].ingredients?.length || 0}/
+                    {selectedIngredients.size}/
                     {recipes[currentRecipeIndex].ingredients?.length || 0}
                   </span>
                 </div>
 
                 <div className="space-y-3">
-                  {recipes[currentRecipeIndex].ingredients?.map((ingredient, idx) => (
-                    <div key={idx} className="flex items-center gap-3">
+                  {recipes[currentRecipeIndex].ingredients?.map((ingredient, idx) => {
+                    const isSelected = selectedIngredients.has(idx);
+                    return (
+                      <div 
+                        key={idx} 
+                        className="flex items-center gap-3 cursor-pointer"
+                        onClick={() => handleIngredientToggle(idx)}
+                      >
                       <div className="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
@@ -267,25 +339,33 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
                         <div className="text-xs text-gray-500">{ingredient.quantity}</div>
                       </div>
                       <div className="flex-shrink-0">
+                          {isSelected ? (
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <circle cx="12" cy="12" r="10" fill="#2AB3A6"/>
                           <path d="M9 12l2 2 4-4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
+                          ) : (
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <circle cx="12" cy="12" r="10" stroke="#D1D5DB" strokeWidth="2" fill="none"/>
+                            </svg>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
 
             {/* Footer Buttons */}
-            <div className="p-4 border-t flex gap-3">
+            <div className="p-4 border-t flex flex-col gap-2">
               <button
                 onClick={() => {
                   setIngredientsModalOpen(false);
                   setCurrentRecipeIndex(null);
                 }}
-                className="flex-1 px-4 py-3 border-2 border-[#2AB3A6] text-[#2AB3A6] rounded-lg font-medium hover:bg-[#2AB3A6] hover:text-white transition-colors"
+                className="w-full px-4 bg-white border-2 border-[#327179] text-[#327179] rounded-2xl font-medium"
+                style={{ height: '56px' }}
               >
                 Skip
               </button>
@@ -294,7 +374,8 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
                   setIngredientsModalOpen(false);
                   setUtensilsModalOpen(true);
                 }}
-                className="flex-1 px-4 py-3 bg-[#2AB3A6] text-white rounded-lg font-medium hover:bg-[#239e92] transition-colors"
+                className="w-full px-4 bg-[#327179] text-white rounded-2xl font-medium hover:opacity-90 transition-colors"
+                style={{ height: '56px' }}
               >
                 Next
               </button>
@@ -343,14 +424,20 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-lg font-semibold text-[#2AB3A6]">Utensils</h3>
                   <span className="text-lg font-semibold text-[#2AB3A6]">
-                    {recipes[currentRecipeIndex].utensils?.length || 0}/
+                    {selectedUtensils.size}/
                     {recipes[currentRecipeIndex].utensils?.length || 0}
                   </span>
                 </div>
 
                 <div className="space-y-3">
-                  {recipes[currentRecipeIndex].utensils?.map((utensil, idx) => (
-                    <div key={idx} className="flex items-center gap-3">
+                  {recipes[currentRecipeIndex].utensils?.map((utensil, idx) => {
+                    const isSelected = selectedUtensils.has(idx);
+                    return (
+                      <div 
+                        key={idx} 
+                        className="flex items-center gap-3 cursor-pointer"
+                        onClick={() => handleUtensilToggle(idx)}
+                      >
                       <div className="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
@@ -367,25 +454,33 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
                         <div className="text-sm font-medium text-gray-800 truncate">{utensil.name}</div>
                       </div>
                       <div className="flex-shrink-0">
+                          {isSelected ? (
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <circle cx="12" cy="12" r="10" fill="#2AB3A6"/>
                           <path d="M9 12l2 2 4-4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
+                          ) : (
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <circle cx="12" cy="12" r="10" stroke="#D1D5DB" strokeWidth="2" fill="none"/>
+                            </svg>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
 
             {/* Footer Buttons */}
-            <div className="p-4 border-t flex gap-3">
+            <div className="p-4 border-t flex flex-col gap-2">
               <button
                 onClick={() => {
                   setUtensilsModalOpen(false);
                   setCurrentRecipeIndex(null);
                 }}
-                className="flex-1 px-4 py-3 border-2 border-[#2AB3A6] text-[#2AB3A6] rounded-lg font-medium hover:bg-[#2AB3A6] hover:text-white transition-colors"
+                className="w-full px-4 bg-white border-2 border-[#327179] text-[#327179] rounded-2xl font-medium"
+                style={{ height: '56px' }}
               >
                 Skip
               </button>
@@ -395,9 +490,10 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
                   setCurrentRecipeIndex(null);
                   // TODO: Continue with first step of recipe
                 }}
-                className="flex-1 px-4 py-3 bg-[#2AB3A6] text-white rounded-lg font-medium hover:bg-[#239e92] transition-colors"
+                className="w-full px-4 bg-[#327179] text-white rounded-2xl font-medium hover:opacity-90 transition-colors"
+                style={{ height: '56px' }}
               >
-                Next
+                Start cooking
               </button>
             </div>
           </div>
