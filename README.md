@@ -86,12 +86,27 @@ jamie-oliver-app/
    npm install
    ```
 
-3. **Run in development mode**:
+3. **Configure environment variables**:
+   
+   Create a `.env.local` file and update it with your actual values:
+   ```env
+   # WebSocket Configuration
+   NEXT_PUBLIC_WS_URL=wss://your-websocket-endpoint.com
+   
+   # For webapp testing (optional)
+   NEXT_PUBLIC_WS_ENDPOINT=wss://your-websocket-endpoint.com/ws
+   NEXT_PUBLIC_WS_TOKEN=your-api-token-here
+   NEXT_PUBLIC_WS_CHUNK_BYTES=65536
+   ```
+   
+   **Note**: All environment variables must be prefixed with `NEXT_PUBLIC_` to be accessible in the browser.
+
+4. **Run in development mode**:
    ```bash
    npm run dev
    ```
 
-4. **Open in browser**:
+5. **Open in browser**:
    ```
    http://localhost:3000
    ```
@@ -120,6 +135,27 @@ jamie-oliver-app/
 - **User Message**: Messages sent by the user
 - **Agent Message**: Responses from the workflow system
 - **System Message**: Notifications and system states
+
+## ⚙️ Environment Variables
+
+The application requires the following environment variables (see `.env.example` for reference):
+
+| Variable | Description | Example | Required |
+|----------|-------------|---------|----------|
+| `NEXT_PUBLIC_WS_URL` | Base WebSocket URL (without `/api/ws` path) | `wss://api.example.com` | No* |
+| `NEXT_PUBLIC_WS_ENDPOINT` | Full WebSocket endpoint URL | `wss://api.example.com/ws` | No** |
+| `NEXT_PUBLIC_WS_TOKEN` | API token for WebSocket authentication | `abc123xyz...` | No** |
+| `NEXT_PUBLIC_WS_CHUNK_BYTES` | Maximum bytes per chunk (for audio chunking) | `65536` | No** |
+| `EXTERNAL_BACKEND_WS_URL` | External backend WebSocket URL (mock mode) | `ws://mock-backend:8080` | No |
+
+\* If `NEXT_PUBLIC_WS_URL` is not set or set to `"disabled"`, WebSocket connection will be disabled (useful for local development with mock backend).
+
+\** These variables are used by the `webapp` test application. They are optional for the main application.
+
+**Important**: 
+- All environment variables must be prefixed with `NEXT_PUBLIC_` to be accessible in the browser
+- Create a `.env.local` file (not committed to git) for your local configuration
+- Restart the dev server after changing environment variables
 
 ## 🔧 API Endpoints
 
