@@ -30,6 +30,12 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
   const [currentRecipeIndex, setCurrentRecipeIndex] = useState<number | null>(null);
   const [selectedIngredients, setSelectedIngredients] = useState<Set<number>>(new Set());
   const [selectedUtensils, setSelectedUtensils] = useState<Set<number>>(new Set());
+  const [isStepViewActive, setIsStepViewActive] = useState<boolean>(false);
+  const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
+  const [markAsDoneModalOpen, setMarkAsDoneModalOpen] = useState<boolean>(false);
+  const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
+  const [timerSeconds, setTimerSeconds] = useState<number>(0);
+  const [stepVideoModalOpen, setStepVideoModalOpen] = useState<boolean>(false);
 
   const handleRecipeClick = (index: number) => {
     const newExpandedIndex = expandedIndex === index ? null : index;
@@ -86,6 +92,341 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
       setSelectedUtensils(new Set(utensils.map((_, idx) => idx)));
     }
   }, [utensilsModalOpen, currentRecipeIndex, recipes]);
+
+  // Update timer when step changes
+  useEffect(() => {
+    if (isStepViewActive && currentRecipeIndex !== null && recipes[currentRecipeIndex]?.steps) {
+      const step = recipes[currentRecipeIndex].steps![currentStepIndex];
+      setTimerSeconds(parseDurationToSeconds(step.duration));
+      setIsTimerRunning(false);
+    }
+  }, [currentStepIndex, isStepViewActive, currentRecipeIndex, recipes]);
+
+  // Timer effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (isTimerRunning && timerSeconds > 0) {
+      interval = setInterval(() => {
+        setTimerSeconds(prev => {
+          if (prev <= 1) {
+            setIsTimerRunning(false);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isTimerRunning, timerSeconds]);
+
+  // Parse duration string to seconds (e.g., "20:00 min" -> 1200)
+  const parseDurationToSeconds = (duration: string): number => {
+    const match = duration.match(/(\d+):(\d+)/);
+    if (match) {
+      const minutes = parseInt(match[1], 10);
+      const seconds = parseInt(match[2], 10);
+      return minutes * 60 + seconds;
+    }
+    // Fallback: try to extract just minutes
+    const minutesMatch = duration.match(/(\d+)\s*min/);
+    if (minutesMatch) {
+      return parseInt(minutesMatch[1], 10) * 60;
+    }
+    return 0;
+  };
+
+  // Format seconds to MM:SS
+  const formatTimer = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleStartCooking = (recipeIdx: number) => {
+    if (recipes[recipeIdx]?.steps && recipes[recipeIdx].steps!.length > 0) {
+      setIsStepViewActive(true);
+      setCurrentStepIndex(0);
+      setCurrentRecipeIndex(recipeIdx);
+      const firstStep = recipes[recipeIdx].steps![0];
+      setTimerSeconds(parseDurationToSeconds(firstStep.duration));
+      setUtensilsModalOpen(false);
+    }
+  };
+
+  const handlePreviousStep = () => {
+    if (currentStepIndex === 0) {
+      // Go back to recipe view
+      setIsStepViewActive(false);
+      setCurrentStepIndex(0);
+      setIsTimerRunning(false);
+      setTimerSeconds(0);
+    } else {
+      const newIndex = currentStepIndex - 1;
+      setCurrentStepIndex(newIndex);
+      if (currentRecipeIndex !== null && recipes[currentRecipeIndex]?.steps) {
+        const step = recipes[currentRecipeIndex].steps![newIndex];
+        setTimerSeconds(parseDurationToSeconds(step.duration));
+        setIsTimerRunning(false);
+      }
+    }
+  };
+
+  const handleNextStepClick = () => {
+    setMarkAsDoneModalOpen(true);
+  };
+
+  const handleMarkAsDone = () => {
+    setMarkAsDoneModalOpen(false);
+    if (currentRecipeIndex !== null && recipes[currentRecipeIndex]?.steps) {
+      if (currentStepIndex < recipes[currentRecipeIndex].steps!.length - 1) {
+        const newIndex = currentStepIndex + 1;
+        setCurrentStepIndex(newIndex);
+        const nextStep = recipes[currentRecipeIndex].steps![newIndex];
+        setTimerSeconds(parseDurationToSeconds(nextStep.duration));
+        setIsTimerRunning(false);
+      } else {
+        // Last step completed
+        setIsStepViewActive(false);
+        setCurrentStepIndex(0);
+        setIsTimerRunning(false);
+        setTimerSeconds(0);
+      }
+    }
+  };
+
+  const handleTimerToggle = () => {
+    setIsTimerRunning(prev => !prev);
+  };
+
+  // Convert YouTube URL to embed format
+  const getEmbedVideoUrl = (url?: string, autoplay: boolean = false): string | null => {
+    if (!url) return null;
+    const autoplayParam = autoplay ? '1' : '0';
+    // If already embed format, return as is (but update autoplay)
+    if (url.includes('/embed/')) {
+      return url.replace(/autoplay=[01]/, `autoplay=${autoplayParam}`);
+    }
+    // Convert YouTube Shorts to embed
+    if (url.includes('/shorts/')) {
+      const match = url.match(/\/shorts\/([a-zA-Z0-9_-]+)/);
+      if (match) {
+        return `https://www.youtube.com/embed/${match[1]}?autoplay=${autoplayParam}&mute=0&controls=1&rel=0&playsinline=1&modestbranding=1`;
+      }
+    }
+    // Convert regular YouTube URL to embed
+    const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+    if (match) {
+      return `https://www.youtube.com/embed/${match[1]}?autoplay=${autoplayParam}&mute=0&controls=1&rel=0&playsinline=1&modestbranding=1`;
+    }
+    return url;
+  };
+
+  // If step view is active, show step view instead of accordion
+  if (isStepViewActive && currentRecipeIndex !== null && recipes[currentRecipeIndex]?.steps) {
+    const currentStep = recipes[currentRecipeIndex].steps![currentStepIndex];
+    const stepNumber = currentStepIndex + 1;
+    const totalSteps = recipes[currentRecipeIndex].steps!.length;
+    const initialDuration = parseDurationToSeconds(currentStep.duration);
+    const expectedMinutes = Math.floor(initialDuration / 60);
+
+    return (
+      <>
+        {/* Step View */}
+        <div className="mt-3 bg-white rounded-xl p-6 space-y-6">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <button
+              onClick={handlePreviousStep}
+              className="text-gray-600 hover:text-gray-800"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+            <div className="text-right">
+              <div className="text-sm text-gray-500">Step {stepNumber} of {totalSteps}</div>
+            </div>
+          </div>
+
+          {/* Step Title */}
+          <div>
+            <h2 className="text-2xl font-bold text-[#327179]">{currentStep.title}</h2>
+            <p className="text-sm text-gray-500 mt-1">Expected time: {expectedMinutes} min</p>
+          </div>
+
+          {/* Timer Button */}
+          <button
+            onClick={handleTimerToggle}
+            className="w-full px-4 py-3 bg-gray-100 rounded-2xl flex items-center justify-center gap-2 text-[#327179] font-medium"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2"/>
+              <path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            {isTimerRunning ? (
+              <span>Cancel timer ({formatTimer(timerSeconds)})</span>
+            ) : (
+              <span>Start timer</span>
+            )}
+          </button>
+
+          {/* Video Section */}
+          <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-black cursor-pointer"
+            onClick={() => setStepVideoModalOpen(true)}
+          >
+            <div className="absolute top-4 left-4 z-10">
+              <span className="bg-[#327179] text-white px-3 py-1 rounded-full text-sm font-medium">
+                Step {stepNumber}
+              </span>
+            </div>
+            {currentStep.icon ? (
+              <div className="relative w-full h-full">
+                <Image
+                  src={currentStep.icon}
+                  alt={currentStep.title}
+                  fill
+                  className="object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400';
+                  }}
+                />
+                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 hover:bg-opacity-40 transition-opacity">
+                  <div className="w-16 h-16 rounded-full bg-white bg-opacity-90 flex items-center justify-center hover:bg-opacity-100 transition-opacity">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M8 5v14l11-7z" fill="#327179" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          {/* Instructions - Placeholder text based on step title */}
+          <div className="space-y-4">
+            <div className="flex gap-3">
+              <span className="text-[#327179] font-semibold">1.</span>
+              <p className="text-gray-700">Bring a large pot of heavily salted water to a boil.</p>
+            </div>
+            <div className="flex gap-3">
+              <span className="text-[#327179] font-semibold">2.</span>
+              <p className="text-gray-700">Cook your choice of pasta (long noodles like spaghetti or linguine work well) until it is al dente, or just shy of cooked through.</p>
+            </div>
+            <div className="flex gap-3">
+              <span className="text-[#327179] font-semibold">3.</span>
+              <p className="text-gray-700">Before draining the pasta, reserve at least a half cup of the starchy cooking water. This is crucial for creating a creamy sauce.</p>
+            </div>
+          </div>
+
+          {/* Navigation Buttons */}
+          <div className="flex gap-3 pt-4">
+            <button
+              onClick={handlePreviousStep}
+              className="flex-1 px-4 py-3 bg-gray-100 text-[#327179] rounded-lg font-medium flex items-center justify-center gap-2"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Previous
+            </button>
+            <button
+              onClick={handleNextStepClick}
+              className="flex-1 px-4 py-3 bg-[#327179] text-white rounded-lg font-medium flex items-center justify-center gap-2"
+            >
+              Next
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Mark as Done Modal */}
+        {markAsDoneModalOpen && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+            onClick={() => setMarkAsDoneModalOpen(false)}
+          >
+            <div
+              className="bg-white rounded-2xl w-full max-w-md flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 border-b">
+                <h2 className="text-xl font-semibold text-[#327179]">Mark steps as done</h2>
+                <button
+                  onClick={() => setMarkAsDoneModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="p-4">
+                <p className="text-sm text-gray-600">
+                  When you&apos;re done just say &apos;Next&apos; or tap the button below when you&apos;re done with a step.
+                </p>
+              </div>
+
+              {/* Footer Buttons */}
+              <div className="p-4 border-t flex flex-col gap-2">
+                <button
+                  onClick={() => setMarkAsDoneModalOpen(false)}
+                  className="w-full px-4 bg-white border-2 border-[#327179] text-[#327179] rounded-2xl font-medium"
+                  style={{ height: '56px' }}
+                >
+                  Close
+                </button>
+                <button
+                  onClick={handleMarkAsDone}
+                  className="w-full px-4 bg-[#327179] text-white rounded-2xl font-medium hover:opacity-90 transition-colors"
+                  style={{ height: '56px' }}
+                >
+                  Mark as done
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step Video Modal - Fullscreen */}
+        {stepVideoModalOpen && (
+          <div
+            className="fixed inset-0 bg-black z-50"
+            onClick={() => setStepVideoModalOpen(false)}
+          >
+            <div className="absolute top-4 right-4 z-10">
+              <button
+                onClick={() => setStepVideoModalOpen(false)}
+                className="text-white hover:text-gray-300 transition-colors bg-black bg-opacity-50 rounded-full p-2"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="w-full h-full" onClick={(e) => e.stopPropagation()}>
+              <iframe
+                width="100%"
+                height="100%"
+                src={getEmbedVideoUrl('https://www.youtube.com/shorts/3MU0DrXV024', true) || ''}
+                title={currentStep.title}
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                className="w-full h-full"
+              />
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
 
   return (
     <>
@@ -215,7 +556,13 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
                     )}
 
                     {/* Start Cooking Button */}
-                    <button className="w-full px-4 py-3 bg-[#2AB3A6] text-white rounded-lg font-medium hover:bg-[#239e92] transition-colors">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleStartCooking(idx);
+                      }}
+                      className="w-full px-4 py-3 bg-[#2AB3A6] text-white rounded-lg font-medium hover:bg-[#239e92] transition-colors"
+                    >
                       Start cooking
                     </button>
                     </div>
@@ -486,9 +833,9 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
               </button>
               <button
                 onClick={() => {
-                  setUtensilsModalOpen(false);
-                  setCurrentRecipeIndex(null);
-                  // TODO: Continue with first step of recipe
+                  if (currentRecipeIndex !== null) {
+                    handleStartCooking(currentRecipeIndex);
+                  }
                 }}
                 className="w-full px-4 bg-[#327179] text-white rounded-2xl font-medium hover:opacity-90 transition-colors"
                 style={{ height: '56px' }}
