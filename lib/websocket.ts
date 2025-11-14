@@ -10,6 +10,17 @@ export class WebSocketManager {
   constructor(private url: string) {}
 
   connect(): Promise<void> {
+    // Validate URL before attempting connection
+    if (!this.url || this.url.trim() === '') {
+      return Promise.reject(new Error('WebSocket URL is required'));
+    }
+    
+    try {
+      new URL(this.url);
+    } catch {
+      return Promise.reject(new Error(`Invalid WebSocket URL: ${this.url}`));
+    }
+    
     return new Promise((resolve, reject) => {
       try {
         this.ws = new WebSocket(this.url);

@@ -46,12 +46,24 @@ export const useChatSocket = (options: UseChatSocketOptions = {}) => {
       // Connect to WebSocket server to receive push messages from backend
       // Allow disabling WS by leaving NEXT_PUBLIC_WS_URL undefined or setting it to "disabled"
       const wsBase = process.env.NEXT_PUBLIC_WS_URL;
-      if (!wsBase || wsBase === 'disabled') {
-        // Skip WS connection in local/dev mock mode
+      if (!wsBase || wsBase === 'disabled' || wsBase.trim() === '') {
+        // Skip WS connection in local/dev mock mode - no error, just don't connect
+        console.log('[useChatSocket] WebSocket disabled or not configured, skipping connection');
         setIsConnected(false);
         wsManagerRef.current = null;
         return;
       }
+      
+      // Validate URL format
+      try {
+        new URL(wsBase);
+      } catch {
+        console.warn('[useChatSocket] Invalid WebSocket URL format, skipping connection');
+        setIsConnected(false);
+        wsManagerRef.current = null;
+        return;
+      }
+      
       const wsUrl = `${wsBase}/api/ws?session_id=${session}`;
       const wsManager = new WebSocketManager(wsUrl);
       
