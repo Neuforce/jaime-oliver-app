@@ -43,7 +43,7 @@ export class WebSocketManager {
         this.ws.onerror = (error) => {
           console.error('WebSocket error:', error);
           this.emit('error', { error: 'Connection error' });
-          reject(error);
+          // Don't reject here - onclose will handle the connection failure
         };
       } catch (error) {
         reject(error);
@@ -72,6 +72,7 @@ export class WebSocketManager {
       this.emit('error', { error: 'WebSocket not connected' });
     }
   }
+
 
   on(event: string, callback: (data: unknown) => void) {
     if (!this.listeners.has(event)) {

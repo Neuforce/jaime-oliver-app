@@ -36,6 +36,8 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
   const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
   const [timerSeconds, setTimerSeconds] = useState<number>(0);
   const [stepVideoModalOpen, setStepVideoModalOpen] = useState<boolean>(false);
+  const [feedbackModalOpen, setFeedbackModalOpen] = useState<boolean>(false);
+  const [feedbackText, setFeedbackText] = useState<string>('');
 
   const handleRecipeClick = (index: number) => {
     const newExpandedIndex = expandedIndex === index ? null : index;
@@ -174,7 +176,16 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
   };
 
   const handleNextStepClick = () => {
-    setMarkAsDoneModalOpen(true);
+    if (currentRecipeIndex !== null && recipes[currentRecipeIndex]?.steps) {
+      const isLastStep = currentStepIndex === recipes[currentRecipeIndex].steps!.length - 1;
+      if (isLastStep) {
+        // Show feedback modal on last step
+        setFeedbackModalOpen(true);
+      } else {
+        // Show mark as done modal for intermediate steps
+        setMarkAsDoneModalOpen(true);
+      }
+    }
   };
 
   const handleMarkAsDone = () => {
@@ -186,14 +197,30 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
         const nextStep = recipes[currentRecipeIndex].steps![newIndex];
         setTimerSeconds(parseDurationToSeconds(nextStep.duration));
         setIsTimerRunning(false);
-      } else {
-        // Last step completed
-        setIsStepViewActive(false);
-        setCurrentStepIndex(0);
-        setIsTimerRunning(false);
-        setTimerSeconds(0);
       }
     }
+  };
+
+  const handleSubmitFeedback = () => {
+    // TODO: Send feedback to server
+    console.log('Feedback submitted:', feedbackText);
+    setFeedbackModalOpen(false);
+    setFeedbackText('');
+    // Return to recipe view after feedback
+    setIsStepViewActive(false);
+    setCurrentStepIndex(0);
+    setIsTimerRunning(false);
+    setTimerSeconds(0);
+  };
+
+  const handleSkipFeedback = () => {
+    setFeedbackModalOpen(false);
+    setFeedbackText('');
+    // Return to recipe view after skipping feedback
+    setIsStepViewActive(false);
+    setCurrentStepIndex(0);
+    setIsTimerRunning(false);
+    setTimerSeconds(0);
   };
 
   const handleTimerToggle = () => {
@@ -335,10 +362,21 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
               onClick={handleNextStepClick}
               className="flex-1 px-4 py-3 bg-[#327179] text-white rounded-lg font-medium flex items-center justify-center gap-2"
             >
-              Next
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+              {currentStepIndex === totalSteps - 1 ? (
+                <>
+                  Finish
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </>
+              ) : (
+                <>
+                  Next
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -388,6 +426,65 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
                   style={{ height: '56px' }}
                 >
                   Mark as done
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Feedback Modal */}
+        {feedbackModalOpen && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+            onClick={() => setFeedbackModalOpen(false)}
+          >
+            <div
+              className="bg-white rounded-2xl w-full max-w-md flex flex-col max-h-[90vh]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 border-b">
+                <h2 className="text-xl font-semibold text-[#327179]">
+                  How was your {recipes[currentRecipeIndex]?.title || 'recipe'}?
+                </h2>
+                <button
+                  onClick={() => setFeedbackModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="p-4 flex-1 overflow-y-auto">
+                <p className="text-sm text-gray-600 mb-4">
+                  Alright, you&apos;ve just cooked up your masterpiece! We&apos;d love to hear what you think.
+                </p>
+                <textarea
+                  value={feedbackText}
+                  onChange={(e) => setFeedbackText(e.target.value)}
+                  placeholder="Share your thoughts about the recipe..."
+                  className="w-full min-h-[120px] p-3 border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[#327179] focus:border-transparent"
+                />
+              </div>
+
+              {/* Footer Buttons */}
+              <div className="p-4 border-t flex flex-col gap-2">
+                <button
+                  onClick={handleSkipFeedback}
+                  className="w-full px-4 bg-white border-2 border-[#327179] text-[#327179] rounded-2xl font-medium"
+                  style={{ height: '56px' }}
+                >
+                  Skip
+                </button>
+                <button
+                  onClick={handleSubmitFeedback}
+                  className="w-full px-4 bg-[#327179] text-white rounded-2xl font-medium hover:opacity-90 transition-colors"
+                  style={{ height: '56px' }}
+                >
+                  Submit feedback
                 </button>
               </div>
             </div>

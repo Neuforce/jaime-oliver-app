@@ -333,6 +333,7 @@ export const useChatSocket = (options: UseChatSocketOptions = {}) => {
     }
   }, [sessionId]);
 
+
   // Save conversation when messages change
   useEffect(() => {
     if (sessionId && messages.length > 0) {

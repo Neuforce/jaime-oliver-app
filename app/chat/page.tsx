@@ -398,7 +398,8 @@ function ChatPageContent() {
     return () => {
       disconnect();
     };
-  }, [connect, disconnect, initialSessionId, searchParams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialSessionId]);
 
   const handleBackToHome = () => {
     disconnect();
