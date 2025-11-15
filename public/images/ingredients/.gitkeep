@@ -1,0 +1,33 @@
+# Ingredients Images Directory
+
+This directory contains images for recipe ingredients.
+
+## Required Images
+
+Based on the current implementation, the following images are referenced:
+
+- `garlic.png`
+- `celery.png`
+- `fennel.png`
+- `courgette.png`
+- `pasta.png`
+- `olive-oil.png`
+- `tomatoes.png`
+- `mussels.png`
+- `lemon.png`
+- `rocket.png`
+- `salt.png`
+- `pepper.png`
+- `butter.png`
+- `parmesan.png`
+- `basil.png`
+- `squash.png`
+- `risotto.png`
+- `stock.png`
+- `default.png` (fallback image)
+
+## Usage
+
+Images are automatically matched by ingredient name (case-insensitive, partial matching supported).
+If an image is not found, the system will fall back to `default.png`.
+

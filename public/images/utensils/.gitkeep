@@ -1,0 +1,29 @@
+# Utensils Images Directory
+
+This directory contains images for cooking utensils and equipment.
+
+## Required Images
+
+Based on the current implementation, the following images are referenced:
+
+- `knife.png`
+- `cutting-board.png`
+- `pot.png`
+- `pan.png`
+- `colander.png`
+- `spoon.png`
+- `spatula.png`
+- `tongs.png`
+- `bowl.png`
+- `plate.png`
+- `lid.png`
+- `zester.png`
+- `grater.png`
+- `ladle.png`
+- `default.png` (fallback image)
+
+## Usage
+
+Images are automatically matched by utensil name (case-insensitive, partial matching supported).
+If an image is not found, the system will fall back to `default.png`.
+

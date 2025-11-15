@@ -8,6 +8,7 @@ interface RecipeAccordionProps {
   recipes: RecipeItem[];
   onExpandChange?: (isExpanded: boolean) => void;
   onRecipeSelected?: (recipeTitle: string | null) => void;
+  getRecipe?: (workflowId: string) => void;
 }
 
 // Simple function to convert markdown bold to HTML
@@ -22,7 +23,174 @@ const renderMarkdown = (text: string) => {
   });
 };
 
-export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExpandChange, onRecipeSelected }) => {
+// Helper function to get fallback image for ingredient
+const getIngredientFallbackImage = (ingredientName: string): string => {
+  const normalizedName = ingredientName.toLowerCase().trim();
+  const ingredientImages: Record<string, string> = {
+    'garlic': '/images/ingredients/garlic.png',
+    'celery': '/images/ingredients/celery.png',
+    'fennel': '/images/ingredients/fennel.png',
+    'courgette': '/images/ingredients/courgette.png',
+    'zucchini': '/images/ingredients/courgette.png',
+    'pasta': '/images/ingredients/pasta.png',
+    'linguine': '/images/ingredients/pasta.png',
+    'tagliatelle': '/images/ingredients/pasta.png',
+    'spaghetti': '/images/ingredients/pasta.png',
+    'olive oil': '/images/ingredients/olive-oil.png',
+    'tomatoes': '/images/ingredients/tomatoes.png',
+    'tomato': '/images/ingredients/tomatoes.png',
+    'mussels': '/images/ingredients/mussels.png',
+    'mussel': '/images/ingredients/mussels.png',
+    'lemon': '/images/ingredients/lemon.png',
+    'rocket': '/images/ingredients/rocket.png',
+    'arugula': '/images/ingredients/rocket.png',
+    'salt': '/images/ingredients/salt.png',
+    'pepper': '/images/ingredients/pepper.png',
+    'butter': '/images/ingredients/butter.png',
+    'parmesan': '/images/ingredients/parmesan.png',
+    'basil': '/images/ingredients/basil.png',
+    'squash': '/images/ingredients/squash.png',
+    'butternut squash': '/images/ingredients/squash.png',
+    'risotto': '/images/ingredients/risotto.png',
+    'arborio rice': '/images/ingredients/risotto.png',
+    'stock': '/images/ingredients/stock.png',
+    'vegetable stock': '/images/ingredients/stock.png',
+  };
+  
+  // Try exact match
+  if (ingredientImages[normalizedName]) {
+    return ingredientImages[normalizedName];
+  }
+  
+  // Try partial match
+  for (const [key, imageUrl] of Object.entries(ingredientImages)) {
+    if (normalizedName.includes(key)) {
+      return imageUrl;
+    }
+  }
+  
+  return '/images/ingredients/default.png';
+};
+
+// Helper function to get fallback image for utensil
+const getUtensilFallbackImage = (utensilName: string): string => {
+  const normalizedName = utensilName.toLowerCase().trim();
+  const utensilImages: Record<string, string> = {
+    'knife': '/images/utensils/knife.png',
+    'sharp knife': '/images/utensils/knife.png',
+    'cutting board': '/images/utensils/cutting-board.png',
+    'pot': '/images/utensils/pot.png',
+    'large pot': '/images/utensils/pot.png',
+    'frying pan': '/images/utensils/pan.png',
+    'pan': '/images/utensils/pan.png',
+    'large frying pan': '/images/utensils/pan.png',
+    'colander': '/images/utensils/colander.png',
+    'spoon': '/images/utensils/spoon.png',
+    'wooden spoon': '/images/utensils/spoon.png',
+    'spatula': '/images/utensils/spatula.png',
+    'tongs': '/images/utensils/tongs.png',
+    'bowl': '/images/utensils/bowl.png',
+    'small bowl': '/images/utensils/bowl.png',
+    'plate': '/images/utensils/plate.png',
+    'serving plate': '/images/utensils/plate.png',
+    'lid': '/images/utensils/lid.png',
+    'zester': '/images/utensils/zester.png',
+    'grater': '/images/utensils/grater.png',
+    'ladle': '/images/utensils/ladle.png',
+  };
+  
+  // Try exact match
+  if (utensilImages[normalizedName]) {
+    return utensilImages[normalizedName];
+  }
+  
+  // Try partial match
+  for (const [key, imageUrl] of Object.entries(utensilImages)) {
+    if (normalizedName.includes(key)) {
+      return imageUrl;
+    }
+  }
+  
+  return '/images/utensils/default.png';
+};
+
+// Function to parse and render detailedDescription markdown into numbered instructions
+const renderDetailedDescription = (detailedDescription: string | undefined): React.ReactNode => {
+  if (!detailedDescription) {
+    return null;
+  }
+
+  // Split by double newlines to get paragraphs/sections
+  const sections = detailedDescription.split(/\n\n+/);
+  const instructions: React.ReactNode[] = [];
+  let instructionNumber = 1;
+
+  sections.forEach((section, sectionIdx) => {
+    // Remove markdown headers (# ## ###)
+    const cleanedSection = section.replace(/^#+\s+/gm, '').trim();
+    
+    // Split by single newlines to process line by line
+    const lines = cleanedSection.split('\n');
+    
+    lines.forEach((line) => {
+      const trimmedLine = line.trim();
+      if (!trimmedLine) return;
+
+      // Check if it's a numbered list item (starts with number and period)
+      const numberedMatch = trimmedLine.match(/^(\d+)\.\s+(.+)$/);
+      if (numberedMatch) {
+        const content = numberedMatch[2];
+        instructions.push(
+          <div key={`${sectionIdx}-${instructionNumber}`} className="flex gap-3">
+            <span className="text-[#327179] font-semibold">{instructionNumber}.</span>
+            <p className="text-gray-700">{renderMarkdown(content)}</p>
+          </div>
+        );
+        instructionNumber++;
+      } else if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('* ')) {
+        // Unordered list item - convert to numbered
+        const content = trimmedLine.substring(2);
+        instructions.push(
+          <div key={`${sectionIdx}-${instructionNumber}`} className="flex gap-3">
+            <span className="text-[#327179] font-semibold">{instructionNumber}.</span>
+            <p className="text-gray-700">{renderMarkdown(content)}</p>
+          </div>
+        );
+        instructionNumber++;
+      } else if (trimmedLine.length > 20) {
+        // Regular paragraph - treat as instruction if it's substantial
+        instructions.push(
+          <div key={`${sectionIdx}-${instructionNumber}`} className="flex gap-3">
+            <span className="text-[#327179] font-semibold">{instructionNumber}.</span>
+            <p className="text-gray-700">{renderMarkdown(trimmedLine)}</p>
+          </div>
+        );
+        instructionNumber++;
+      }
+    });
+  });
+
+  // If no numbered instructions were found, split by sentences and number them
+  if (instructions.length === 0) {
+    const sentences = detailedDescription
+      .replace(/^#+\s+/gm, '') // Remove headers
+      .split(/(?<=[.!?])\s+(?=[A-Z])/) // Split by sentence endings
+      .filter(s => s.trim().length > 10); // Filter out very short fragments
+
+    sentences.forEach((sentence, idx) => {
+      instructions.push(
+        <div key={`fallback-${idx}`} className="flex gap-3">
+          <span className="text-[#327179] font-semibold">{idx + 1}.</span>
+          <p className="text-gray-700">{renderMarkdown(sentence.trim())}</p>
+        </div>
+      );
+    });
+  }
+
+  return instructions.length > 0 ? instructions : null;
+};
+
+export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExpandChange, onRecipeSelected, getRecipe }) => {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [videoModalOpen, setVideoModalOpen] = useState<boolean>(false);
   const [ingredientsModalOpen, setIngredientsModalOpen] = useState<boolean>(false);
@@ -43,9 +211,25 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
     const newExpandedIndex = expandedIndex === index ? null : index;
     setExpandedIndex(newExpandedIndex);
     onExpandChange?.(newExpandedIndex !== null);
+    
     // Notify parent about selected recipe
     if (newExpandedIndex !== null) {
-      onRecipeSelected?.(recipes[newExpandedIndex].title);
+      const recipe = recipes[newExpandedIndex];
+      onRecipeSelected?.(recipe.title);
+      
+      // If recipe is expanded and doesn't have full details, fetch them
+      const recipeWithId = recipe as RecipeItem & { workflowId?: string };
+      if (recipeWithId.workflowId && getRecipe) {
+        // Check if recipe already has full details (ingredients, utensils, steps)
+        const hasFullDetails = recipe.ingredients && recipe.ingredients.length > 0 &&
+                               recipe.utensils && recipe.utensils.length > 0 &&
+                               recipe.steps && recipe.steps.length > 0;
+        
+        if (!hasFullDetails) {
+          console.log('[RecipeAccordion] Fetching recipe details for:', recipeWithId.workflowId);
+          getRecipe(recipeWithId.workflowId);
+        }
+      }
     } else {
       onRecipeSelected?.(null);
     }
@@ -331,21 +515,23 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
             ) : null}
           </div>
 
-          {/* Instructions - Placeholder text based on step title */}
-          <div className="space-y-4">
-            <div className="flex gap-3">
-              <span className="text-[#327179] font-semibold">1.</span>
-              <p className="text-gray-700">Bring a large pot of heavily salted water to a boil.</p>
+          {/* Instructions - Rendered from detailedDescription */}
+          {currentStep.detailedDescription ? (
+            <div className="space-y-4">
+              {renderDetailedDescription(currentStep.detailedDescription)}
             </div>
-            <div className="flex gap-3">
-              <span className="text-[#327179] font-semibold">2.</span>
-              <p className="text-gray-700">Cook your choice of pasta (long noodles like spaghetti or linguine work well) until it is al dente, or just shy of cooked through.</p>
+          ) : currentStep.description ? (
+            <div className="space-y-4">
+              <div className="flex gap-3">
+                <span className="text-[#327179] font-semibold">1.</span>
+                <p className="text-gray-700">{renderMarkdown(currentStep.description)}</p>
+              </div>
             </div>
-            <div className="flex gap-3">
-              <span className="text-[#327179] font-semibold">3.</span>
-              <p className="text-gray-700">Before draining the pasta, reserve at least a half cup of the starchy cooking water. This is crucial for creating a creamy sauce.</p>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-gray-500 italic">No instructions available for this step.</p>
             </div>
-          </div>
+          )}
 
           {/* Navigation Buttons */}
           <div className="flex gap-3 pt-4">
@@ -547,6 +733,23 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
                     width={350}
                     height={160}
                     className="w-full h-40 object-cover rounded-lg"
+                    onError={(e) => {
+                      // Fallback to local image if external image fails
+                      const target = e.target as HTMLImageElement;
+                      // Try to get the local image path based on recipe name
+                      const recipeName = recipe.title.toLowerCase().trim();
+                      const localImages: Record<string, string> = {
+                        'tomato & mussel pasta': '/images/tomato-mussel-pasta.webp',
+                        'sumptuous squash risotto': '/images/risotto.webp',
+                        'jacket potato': '/images/jacket-potato.png',
+                        'chickpea arrabbiata': '/images/arrabbiata.png',
+                        'happy fish pie': '/images/fish-pie.png',
+                      };
+                      const fallbackImage = localImages[recipeName] || '/images/jacket-potato.png';
+                      if (target.src !== fallbackImage) {
+                        target.src = fallbackImage;
+                      }
+                    }}
                   />
                   {!isExpanded && (
                   <div className="pt-2">
@@ -608,6 +811,23 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
                           width={64}
                           height={64}
                           className="object-cover"
+                          onError={(e) => {
+                            // Fallback to local image if external image fails
+                            const target = e.target as HTMLImageElement;
+                            // Try to get the local image path based on recipe name
+                            const recipeName = recipe.title.toLowerCase().trim();
+                            const localImages: Record<string, string> = {
+                              'tomato & mussel pasta': '/images/tomato-mussel-pasta.webp',
+                              'sumptuous squash risotto': '/images/risotto.webp',
+                              'jacket potato': '/images/jacket-potato.png',
+                              'chickpea arrabbiata': '/images/arrabbiata.png',
+                              'happy fish pie': '/images/fish-pie.png',
+                            };
+                            const fallbackImage = localImages[recipeName] || '/images/jacket-potato.png';
+                            if (target.src !== fallbackImage) {
+                              target.src = fallbackImage;
+                            }
+                          }}
                         />
                       </div>
                       <div className="flex-1 font-medium text-gray-800">{recipe.title}</div>
@@ -774,7 +994,10 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
                           className="w-full h-full object-cover"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
-                            target.src = 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400';
+                            const fallbackImage = getIngredientFallbackImage(ingredient.name);
+                            if (target.src !== fallbackImage) {
+                              target.src = fallbackImage;
+                            }
                           }}
                         />
                       </div>
@@ -890,7 +1113,10 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
                           className="w-full h-full object-cover"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
-                            target.src = 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400';
+                            const fallbackImage = getUtensilFallbackImage(utensil.name);
+                            if (target.src !== fallbackImage) {
+                              target.src = fallbackImage;
+                            }
                           }}
                         />
                       </div>

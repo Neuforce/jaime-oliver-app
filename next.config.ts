@@ -7,6 +7,14 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'images.unsplash.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'www.jamieoliver.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'asset.jamieoliver.com',
+      },
     ],
   },
   webpack: (config) => {

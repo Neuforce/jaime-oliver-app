@@ -90,16 +90,14 @@ jamie-oliver-app/
    
    Create a `.env.local` file and update it with your actual values:
    ```env
-   # WebSocket Configuration
-   NEXT_PUBLIC_WS_URL=wss://your-websocket-endpoint.com
-   
-   # For webapp testing (optional)
+   # WebSocket Configuration (required for WebSocket connection)
    NEXT_PUBLIC_WS_ENDPOINT=wss://your-websocket-endpoint.com/ws
-   NEXT_PUBLIC_WS_TOKEN=your-api-token-here
-   NEXT_PUBLIC_WS_CHUNK_BYTES=65536
+   
+   # Optional: Server-side mock backend (for local development)
+   EXTERNAL_BACKEND_WS_URL=ws://mock-backend:8080
    ```
    
-   **Note**: All environment variables must be prefixed with `NEXT_PUBLIC_` to be accessible in the browser.
+   **Note**: Client-side variables (used in browser) must be prefixed with `NEXT_PUBLIC_`. Server-side variables (like `EXTERNAL_BACKEND_WS_URL`) do not need this prefix.
 
 4. **Run in development mode**:
    ```bash
@@ -127,9 +125,10 @@ jamie-oliver-app/
 - **Message Bubbles**: Different styles for user, agent and system
 
 ### Session Management
-- **Unique Session ID**: Each conversation has a unique identifier
-- **Local Persistence**: Session is maintained in localStorage
-- **Automatic Reconnection**: Reconnection attempt in case of connection loss
+- **Unique Session ID**: Each conversation has a unique identifier (persistent via `useSessionId` hook)
+- **Local Persistence**: Session is maintained in localStorage and persists across page reloads
+- **Automatic Connection**: WebSocket connects automatically when sessionId is available
+- **Automatic Reconnection**: Reconnection attempt in case of connection loss (exponential backoff, up to 8 attempts)
 
 ### Message Types
 - **User Message**: Messages sent by the user
@@ -138,22 +137,20 @@ jamie-oliver-app/
 
 ## ⚙️ Environment Variables
 
-The application requires the following environment variables (see `.env.example` for reference):
+The application uses the following environment variables:
 
-| Variable | Description | Example | Required |
-|----------|-------------|---------|----------|
-| `NEXT_PUBLIC_WS_URL` | Base WebSocket URL (without `/api/ws` path) | `wss://api.example.com` | No* |
-| `NEXT_PUBLIC_WS_ENDPOINT` | Full WebSocket endpoint URL | `wss://api.example.com/ws` | No** |
-| `NEXT_PUBLIC_WS_TOKEN` | API token for WebSocket authentication | `abc123xyz...` | No** |
-| `NEXT_PUBLIC_WS_CHUNK_BYTES` | Maximum bytes per chunk (for audio chunking) | `65536` | No** |
-| `EXTERNAL_BACKEND_WS_URL` | External backend WebSocket URL (mock mode) | `ws://mock-backend:8080` | No |
+| Variable | Description | Example | Required | Used In |
+|----------|-------------|---------|----------|---------|
+| `NEXT_PUBLIC_WS_ENDPOINT` | Full WebSocket endpoint URL (complete URL including protocol and path) | `wss://api.example.com/ws` | No* | `hooks/useChatSocket.ts` |
+| `EXTERNAL_BACKEND_WS_URL` | External backend WebSocket URL (server-side, for mock mode) | `ws://mock-backend:8080` | No | `lib/mockExternalBackend.ts` |
 
-\* If `NEXT_PUBLIC_WS_URL` is not set or set to `"disabled"`, WebSocket connection will be disabled (useful for local development with mock backend).
+\* If `NEXT_PUBLIC_WS_ENDPOINT` is not set or set to `"disabled"`, WebSocket connection will be disabled (useful for local development with mock backend). The endpoint should be the complete WebSocket URL including the protocol (`wss://` or `ws://`) and full path.
 
-\** These variables are used by the `webapp` test application. They are optional for the main application.
+**Note**: The `webapp/` subdirectory uses additional variables (`NEXT_PUBLIC_WS_TOKEN`, `NEXT_PUBLIC_WS_CHUNK_BYTES`) but these are not used by the main jamie-oliver-app.
 
 **Important**: 
-- All environment variables must be prefixed with `NEXT_PUBLIC_` to be accessible in the browser
+- Client-side variables must be prefixed with `NEXT_PUBLIC_` to be accessible in the browser
+- Server-side variables (like `EXTERNAL_BACKEND_WS_URL`) do NOT need the `NEXT_PUBLIC_` prefix
 - Create a `.env.local` file (not committed to git) for your local configuration
 - Restart the dev server after changing environment variables
 

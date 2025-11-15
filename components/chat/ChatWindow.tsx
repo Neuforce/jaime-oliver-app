@@ -8,12 +8,14 @@ interface ChatWindowProps {
   messages: ChatMessage[];
   onSendMessage: (message: string) => void;
   isLoading?: boolean;
+  getRecipe?: (workflowId: string) => void;
 }
 
 export const ChatWindow: React.FC<ChatWindowProps> = ({
   messages,
   onSendMessage,
   isLoading = false,
+  getRecipe,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [showVoiceInstructions, setShowVoiceInstructions] = useState(false);
@@ -57,6 +59,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
               message={message}
               hasExpandedRecipe={hasExpandedRecipe}
               onRecipeExpandedChange={setHasExpandedRecipe}
+              getRecipe={getRecipe}
             />
           ))
         )}

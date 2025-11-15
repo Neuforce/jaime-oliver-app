@@ -18,9 +18,11 @@ function ChatPageContent() {
     messages,
     isLoading,
     error,
-    connect,
+    isConnected,
     disconnect,
     sendMessage,
+    getRecipes,
+    getRecipe,
   } = useChatSocket({
     initialSessionId,
     initialMessages,
@@ -52,10 +54,11 @@ function ChatPageContent() {
           console.error('Error loading conversation:', error);
         }
       } else if (starter) {
-        // Prime a new session with the starter and a mocked recipe list response
+        // Prime a new session with the starter
         const newSessionId = `${Date.now()}`;
         setInitialSessionId(newSessionId);
         const now = new Date().toISOString();
+        // Add user message immediately
         const initial: ChatMessage[] = [
           {
             type: 'message',
@@ -64,324 +67,6 @@ function ChatPageContent() {
             content: starter,
             timestamp: now,
           },
-          {
-            type: 'recipeList',
-            sender: 'agent',
-            session_id: newSessionId,
-            content: "Ah, mate! Absolutely, I've got you covered.\n\nHere's a small collection of **easy, delicious,** and **healthy recipes** that are flavorful but won't overwhelm you in the kitchen:",
-            timestamp: new Date(Date.now() + 1000).toISOString(),
-            recipes: [
-              {
-                title: 'Jacket potato',
-                duration: '1 hr',
-                imageUrl: '/images/jacket-potato.png',
-                videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-                introText: "I'll guide you step by step as if we're cooking it together.\n**Make sure you gather all your ingredients** — keep them visible and ready to go.\n**Lay out your utensils** — pot, pan, tongs, zester, grater, and ladle.\n**Check off each ingredient** as you place it on your counter.\nAnd don't forget to check off each ingredient as you place it on your counter. That way, we're set to cook smoothly and enjoy every step!",
-                ingredients: [
-                  {
-                    name: 'Pasta spaghetti or linguine',
-                    quantity: '200g',
-                    imageUrl: 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=400',
-                  },
-                  {
-                    name: 'Large unwaxed lemons',
-                    quantity: '2',
-                    imageUrl: 'https://images.unsplash.com/photo-1608270586621-8a57b4d4d73f?w=400',
-                  },
-                  {
-                    name: 'Clove of garlic, peeled and bashed but kept whole',
-                    quantity: '1',
-                    imageUrl: 'https://images.unsplash.com/photo-1545694732-5a3bd4b0a2e6?w=400',
-                  },
-                  {
-                    name: 'Olive oil',
-                    quantity: '100ml',
-                    imageUrl: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400',
-                  },
-                  {
-                    name: 'Flaky sea salt',
-                    quantity: '1 teaspoon',
-                    imageUrl: 'https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?w=400',
-                  },
-                  {
-                    name: 'Salted butter or vegan butter',
-                    quantity: '50g',
-                    imageUrl: 'https://images.unsplash.com/photo-1558362901-2a3f0c3d0a2d?w=400',
-                  },
-                  {
-                    name: 'Parmesan or vegan Parmesan-style cheese (I use a vegetarian one), grated',
-                    quantity: '40g',
-                    imageUrl: 'https://images.unsplash.com/photo-1618164436266-75ebb7b29e86?w=400',
-                  },
-                  {
-                    name: 'Optional: ½ a bunch of basil (15g), leaves picked and torn',
-                    quantity: '15g',
-                    imageUrl: 'https://images.unsplash.com/photo-1618375569909-2d67851f3a6a?w=400',
-                  },
-                ],
-                utensils: [
-                  {
-                    name: 'Large pot',
-                    imageUrl: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400',
-                  },
-                  {
-                    name: 'Colander',
-                    imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400',
-                  },
-                  {
-                    name: 'Blender or mortar',
-                    imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400',
-                  },
-                  {
-                    name: 'Knife',
-                    imageUrl: 'https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=400',
-                  },
-                  {
-                    name: 'Cutting board',
-                    imageUrl: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400',
-                  },
-                ],
-                steps: [
-                  {
-                    title: 'Cook the pasta',
-                    duration: '20:00 min',
-                    icon: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400',
-                  },
-                  {
-                    title: 'Sauté aromatics',
-                    duration: '4:00 min',
-                    icon: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400',
-                  },
-                  {
-                    title: 'Make the sauce',
-                    duration: '10:00 min',
-                    icon: 'https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=400',
-                  },
-                  {
-                    title: 'Add the chickpeas',
-                    duration: '5:00 min',
-                    icon: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400',
-                  },
-                  {
-                    title: 'Combine with pasta',
-                    duration: '2:00 min',
-                    icon: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400',
-                  },
-                  {
-                    title: 'Finish and serve',
-                    duration: '2:00 min',
-                    icon: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400',
-                  },
-                ],
-              },
-              {
-                title: 'Chickpea arrabbiata',
-                duration: '15 min',
-                imageUrl: '/images/arrabbiata.png',
-                videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
-                introText: "I'll guide you step by step as if we're cooking it together.\n**Make sure you gather all your ingredients** — keep them visible and ready to go.\n**Lay out your utensils** — pot, pan, tongs, zester, grater, and ladle.\n**Check off each ingredient** as you place it on your counter.\nNext, lay out your utensils — pot, pan, tongs, zester, grater, and ladle.\nAnd don't forget to check off each ingredient as you place it on your counter. That way, we're set to cook smoothly and enjoy every step!",
-                ingredients: [
-                  {
-                    name: 'Pasta spaghetti or linguine',
-                    quantity: '200g',
-                    imageUrl: 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=400',
-                  },
-                  {
-                    name: 'Large unwaxed lemons',
-                    quantity: '2',
-                    imageUrl: 'https://images.unsplash.com/photo-1608270586621-8a57b4d4d73f?w=400',
-                  },
-                  {
-                    name: 'Clove of garlic, peeled and bashed but kept whole',
-                    quantity: '1',
-                    imageUrl: 'https://images.unsplash.com/photo-1545694732-5a3bd4b0a2e6?w=400',
-                  },
-                  {
-                    name: 'Olive oil',
-                    quantity: '100ml',
-                    imageUrl: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400',
-                  },
-                  {
-                    name: 'Flaky sea salt',
-                    quantity: '1 teaspoon',
-                    imageUrl: 'https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?w=400',
-                  },
-                  {
-                    name: 'Salted butter or vegan butter',
-                    quantity: '50g',
-                    imageUrl: 'https://images.unsplash.com/photo-1558362901-2a3f0c3d0a2d?w=400',
-                  },
-                  {
-                    name: 'Parmesan or vegan Parmesan-style cheese (I use a vegetarian one), grated',
-                    quantity: '40g',
-                    imageUrl: 'https://images.unsplash.com/photo-1618164436266-75ebb7b29e86?w=400',
-                  },
-                  {
-                    name: 'Optional: ½ a bunch of basil (15g), leaves picked and torn',
-                    quantity: '15g',
-                    imageUrl: 'https://images.unsplash.com/photo-1618375569909-2d67851f3a6a?w=400',
-                  },
-                ],
-                utensils: [
-                  {
-                    name: 'Large pot',
-                    imageUrl: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400',
-                  },
-                  {
-                    name: 'Colander',
-                    imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400',
-                  },
-                  {
-                    name: 'Blender or mortar',
-                    imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400',
-                  },
-                  {
-                    name: 'Knife',
-                    imageUrl: 'https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=400',
-                  },
-                  {
-                    name: 'Cutting board',
-                    imageUrl: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400',
-                  },
-                ],
-                steps: [
-                  {
-                    title: 'Cook the pasta',
-                    duration: '20:00 min',
-                    icon: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400',
-                  },
-                  {
-                    title: 'Sauté aromatics',
-                    duration: '4:00 min',
-                    icon: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400',
-                  },
-                  {
-                    title: 'Make the sauce',
-                    duration: '10:00 min',
-                    icon: 'https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=400',
-                  },
-                  {
-                    title: 'Add the chickpeas',
-                    duration: '5:00 min',
-                    icon: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400',
-                  },
-                  {
-                    title: 'Combine with pasta',
-                    duration: '2:00 min',
-                    icon: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400',
-                  },
-                  {
-                    title: 'Finish and serve',
-                    duration: '2:00 min',
-                    icon: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400',
-                  },
-                ],
-              },
-              {
-                title: 'Happy fish pie',
-                duration: '1 hr 10 min',
-                imageUrl: '/images/fish-pie.png',
-                videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-                introText: "I'll guide you step by step as if we're cooking it together.\n**Make sure you gather all your ingredients** — keep them visible and ready to go.\n**Lay out your utensils** — pot, pan, tongs, zester, grater, and ladle.\n**Check off each ingredient** as you place it on your counter.\nAnd don't forget to check off each ingredient as you place it on your counter. That way, we're set to cook smoothly and enjoy every step!",
-                ingredients: [
-                  {
-                    name: 'Pasta spaghetti or linguine',
-                    quantity: '200g',
-                    imageUrl: 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=400',
-                  },
-                  {
-                    name: 'Large unwaxed lemons',
-                    quantity: '2',
-                    imageUrl: 'https://images.unsplash.com/photo-1608270586621-8a57b4d4d73f?w=400',
-                  },
-                  {
-                    name: 'Clove of garlic, peeled and bashed but kept whole',
-                    quantity: '1',
-                    imageUrl: 'https://images.unsplash.com/photo-1545694732-5a3bd4b0a2e6?w=400',
-                  },
-                  {
-                    name: 'Olive oil',
-                    quantity: '100ml',
-                    imageUrl: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400',
-                  },
-                  {
-                    name: 'Flaky sea salt',
-                    quantity: '1 teaspoon',
-                    imageUrl: 'https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?w=400',
-                  },
-                  {
-                    name: 'Salted butter or vegan butter',
-                    quantity: '50g',
-                    imageUrl: 'https://images.unsplash.com/photo-1558362901-2a3f0c3d0a2d?w=400',
-                  },
-                  {
-                    name: 'Parmesan or vegan Parmesan-style cheese (I use a vegetarian one), grated',
-                    quantity: '40g',
-                    imageUrl: 'https://images.unsplash.com/photo-1618164436266-75ebb7b29e86?w=400',
-                  },
-                  {
-                    name: 'Optional: ½ a bunch of basil (15g), leaves picked and torn',
-                    quantity: '15g',
-                    imageUrl: 'https://images.unsplash.com/photo-1618375569909-2d67851f3a6a?w=400',
-                  },
-                ],
-                utensils: [
-                  {
-                    name: 'Large pot',
-                    imageUrl: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400',
-                  },
-                  {
-                    name: 'Colander',
-                    imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400',
-                  },
-                  {
-                    name: 'Blender or mortar',
-                    imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400',
-                  },
-                  {
-                    name: 'Knife',
-                    imageUrl: 'https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=400',
-                  },
-                  {
-                    name: 'Cutting board',
-                    imageUrl: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400',
-                  },
-                ],
-                steps: [
-                  {
-                    title: 'Cook the pasta',
-                    duration: '20:00 min',
-                    icon: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400',
-                  },
-                  {
-                    title: 'Sauté aromatics',
-                    duration: '4:00 min',
-                    icon: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400',
-                  },
-                  {
-                    title: 'Make the sauce',
-                    duration: '10:00 min',
-                    icon: 'https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=400',
-                  },
-                  {
-                    title: 'Add the chickpeas',
-                    duration: '5:00 min',
-                    icon: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400',
-                  },
-                  {
-                    title: 'Combine with pasta',
-                    duration: '2:00 min',
-                    icon: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400',
-                  },
-                  {
-                    title: 'Finish and serve',
-                    duration: '2:00 min',
-                    icon: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400',
-                  },
-                ],
-              },
-            ],
-          },
         ];
         setInitialMessages(initial);
       }
@@ -389,17 +74,23 @@ function ChatPageContent() {
     
     loadConversation();
   }, [searchParams]);
-  
+
+  // Call getRecipes when WebSocket is connected and we have a starter
   useEffect(() => {
-    if (initialSessionId || !searchParams.get('conversation')) {
-      connect();
+    const starter = searchParams.get('starter');
+    if (starter && isConnected && initialSessionId) {
+      // Wait a bit for connection to be fully ready, then request recipes
+      const timer = setTimeout(() => {
+        console.log('[ChatPage] Requesting recipes from backend...');
+        getRecipes();
+      }, 500);
+      return () => clearTimeout(timer);
     }
-    
-    return () => {
-      disconnect();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialSessionId]);
+  }, [isConnected, searchParams, initialSessionId, getRecipes]);
+  
+  // Note: WebSocket connection is now automatic when useChatSocket hook mounts
+  // The connection happens automatically when sessionId is available
+  // Cleanup is handled by the hook itself
 
   const handleBackToHome = () => {
     disconnect();
@@ -440,6 +131,7 @@ function ChatPageContent() {
           messages={messages}
           onSendMessage={sendMessage}
           isLoading={isLoading}
+          getRecipe={getRecipe}
         />
         </div>
       </div>

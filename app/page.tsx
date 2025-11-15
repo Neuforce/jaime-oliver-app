@@ -10,7 +10,7 @@ const STARTER_QUESTIONS = [
   'I feel like pasta',
   'Something healthy',
   'Quick 15-minute meal',
-  'Desert ideas',
+  'Dessert ideas',
 ];
 
 export default function HomePage() {
@@ -67,7 +67,16 @@ export default function HomePage() {
                  boxShadow: '0 8px 24px rgba(80, 200, 120, 0.35)'
                }}>
             <div className="relative w-full h-full rounded-full ring-4 ring-green-400">
-              <Image src="/jamie.png" alt="Jamie Oliver" fill className="rounded-full object-cover" />
+              <Image 
+                src="/jamie.png" 
+                alt="Jamie Oliver" 
+                fill 
+                className="rounded-full object-cover" 
+                quality={100}
+                priority
+                sizes="160px"
+                style={{ objectFit: 'cover' }}
+              />
             </div>
           </div>
         </div>
