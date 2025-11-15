@@ -9,6 +9,7 @@ interface RecipeAccordionProps {
   onExpandChange?: (isExpanded: boolean) => void;
   onRecipeSelected?: (recipeTitle: string | null) => void;
   getRecipe?: (workflowId: string) => void;
+  taskDone?: (taskId: string) => void;
 }
 
 // Simple function to convert markdown bold to HTML
@@ -190,7 +191,7 @@ const renderDetailedDescription = (detailedDescription: string | undefined): Rea
   return instructions.length > 0 ? instructions : null;
 };
 
-export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExpandChange, onRecipeSelected, getRecipe }) => {
+export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExpandChange, onRecipeSelected, getRecipe, taskDone }) => {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [videoModalOpen, setVideoModalOpen] = useState<boolean>(false);
   const [ingredientsModalOpen, setIngredientsModalOpen] = useState<boolean>(false);
@@ -375,6 +376,15 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
   const handleMarkAsDone = () => {
     setMarkAsDoneModalOpen(false);
     if (currentRecipeIndex !== null && recipes[currentRecipeIndex]?.steps) {
+      const currentStep = recipes[currentRecipeIndex].steps![currentStepIndex];
+      
+      // Send taskdone action to backend if taskId is available
+      if (currentStep.taskId && taskDone) {
+        console.log('[RecipeAccordion] Marking task as done:', currentStep.taskId);
+        taskDone(currentStep.taskId);
+      }
+      
+      // Move to next step if available
       if (currentStepIndex < recipes[currentRecipeIndex].steps!.length - 1) {
         const newIndex = currentStepIndex + 1;
         setCurrentStepIndex(newIndex);

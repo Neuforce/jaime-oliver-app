@@ -4,6 +4,7 @@ export interface RecipeStep {
   icon?: string; // URL for step icon image
   description?: string; // Short description from task.description
   detailedDescription?: string; // Full markdown description from task.metadata.detailedDescription
+  taskId?: string; // Task ID from backend for taskdone action
 }
 
 export interface Ingredient {
@@ -123,10 +124,44 @@ export interface RecipesListPayload {
   };
 }
 
+export interface NextTask {
+  taskId: string;
+  type: 'immediate' | 'timed';
+  name: string;
+  metadata?: {
+    category?: string;
+    priority?: string;
+    technique?: string;
+    cookingTime?: string;
+    detailedDescription?: string;
+    [key: string]: any;
+  };
+  next?: string[];
+  description: string;
+  dependsOn?: string[];
+  status: 'open' | 'pending' | 'done';
+}
+
+export interface TaskDonePayload {
+  action: 'taskdone';
+  status: 'success' | 'error';
+  requestId: string;
+  taskId: string;
+  sessionId: string;
+  data: {
+    sessionId: string;
+    taskId: string;
+    status: 'done' | 'pending' | 'error';
+    completedAt: string | null;
+    nextTasks: NextTask[];
+    workflowStatus: 'started' | 'completed' | 'paused';
+  };
+}
+
 export interface WebSocketMessage {
   type: 'message' | 'system' | 'status' | 'error' | 'response';
   messageType?: 'recipes_list' | 'recipe_detail' | 'recipe_started' | 'task_done' | 'text_message' | 'text';
-  payload?: RecipesListPayload | any;
+  payload?: RecipesListPayload | RecipeDetailPayload | TaskDonePayload | any;
   messageId?: string;
   metadata?: {
     timestamp?: string;

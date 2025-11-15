@@ -23,6 +23,7 @@ function ChatPageContent() {
     sendMessage,
     getRecipes,
     getRecipe,
+    taskDone,
   } = useChatSocket({
     initialSessionId,
     initialMessages,
@@ -127,12 +128,13 @@ function ChatPageContent() {
 
       {/* Chat Window */}
       <div className="flex-1 overflow-hidden">
-        <ChatWindow
-          messages={messages}
-          onSendMessage={sendMessage}
-          isLoading={isLoading}
-          getRecipe={getRecipe}
-        />
+              <ChatWindow
+                messages={messages}
+                onSendMessage={sendMessage}
+                isLoading={isLoading}
+                getRecipe={getRecipe}
+                taskDone={taskDone}
+              />
         </div>
       </div>
     </div>

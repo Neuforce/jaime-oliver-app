@@ -11,6 +11,7 @@ interface MessageBubbleProps {
   hasExpandedRecipe?: boolean;
   onRecipeExpandedChange?: (expanded: boolean) => void;
   getRecipe?: (workflowId: string) => void;
+  taskDone?: (taskId: string) => void;
 }
 
 // Simple function to convert markdown bold to HTML
@@ -25,7 +26,7 @@ const renderMarkdown = (text: string) => {
   });
 };
 
-export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, hasExpandedRecipe = false, onRecipeExpandedChange, getRecipe }) => {
+export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, hasExpandedRecipe = false, onRecipeExpandedChange, getRecipe, taskDone }) => {
   const [isRecipeExpanded, setIsRecipeExpanded] = useState(false);
   const [selectedRecipeTitle, setSelectedRecipeTitle] = useState<string | null>(null);
   const isUser = message.sender === 'user';
@@ -68,6 +69,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, hasExpand
                 onExpandChange={handleRecipeExpandedChange}
                 onRecipeSelected={setSelectedRecipeTitle}
                 getRecipe={getRecipe}
+                taskDone={taskDone}
               />
             )}
           </>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { ChatMessage, WebSocketMessage, RecipeItem, RecipeWorkflow, RecipeDetail, RecipeTask, RecipeDefinition } from '../types/chat';
+import { ChatMessage, WebSocketMessage, RecipeItem, RecipeWorkflow, RecipeDetail, RecipeTask, RecipeDefinition, TaskDonePayload, NextTask } from '../types/chat';
 import { saveConversation, saveConversationMessages } from '../lib/conversationHistory';
 import { WsClient } from '../lib/wsClient';
 import { useSessionId } from './useSessionId';
@@ -166,6 +166,7 @@ const transformRecipeDetailToRecipeItem = (recipeDetail: RecipeDetail): RecipeIt
     icon: undefined, // Can be added later if needed
     description: task.description, // Short description
     detailedDescription: task.metadata?.detailedDescription, // Full markdown description
+    taskId: task.taskId, // Store taskId for taskdone action
   })) || [];
 
   // Transform ingredientsList to ingredients array
@@ -366,6 +367,57 @@ export const useChatSocket = (options: UseChatSocketOptions = {}) => {
 
             // Call the onMessage callback
             optionsRef.current.onMessage?.(chatMessage);
+          }
+          return;
+        }
+
+        // Handle task_done message from backend
+        if (message.type === 'response' && message.messageType === 'task_done' && message.payload) {
+          const payload = message.payload as TaskDonePayload;
+          const timestamp = message.metadata?.timestamp || new Date().toISOString();
+
+          if (payload.data && payload.status === 'success') {
+            console.log('[useChatSocket] Task completed:', payload.taskId, 'Next tasks:', payload.data.nextTasks?.length || 0);
+
+            // Create a status message about the task completion
+            const statusMessage: ChatMessage = {
+              type: 'status',
+              sender: 'system',
+              session_id: sessionId,
+              content: `Task "${payload.data.nextTasks?.[0]?.name || payload.taskId}" completed. ${payload.data.nextTasks?.length ? `Next: ${payload.data.nextTasks.map(t => t.name).join(', ')}` : 'Recipe completed!'}`,
+              timestamp,
+            };
+
+            // Add status message to state
+            setMessages(prev => {
+              const newMessages = [...prev, statusMessage];
+              saveConversationMessages(sessionId, newMessages);
+              return newMessages;
+            });
+
+            // Call the onMessage callback
+            optionsRef.current.onMessage?.(statusMessage);
+
+            // If there are next tasks, we could update the recipe steps or show them
+            // This depends on how you want to handle the next tasks in the UI
+            if (payload.data.nextTasks && payload.data.nextTasks.length > 0) {
+              console.log('[useChatSocket] Next tasks available:', payload.data.nextTasks);
+              // You might want to update the recipe steps here or trigger navigation to next step
+            }
+          } else if (payload.status === 'error') {
+            const errorMessage: ChatMessage = {
+              type: 'status',
+              sender: 'system',
+              session_id: sessionId,
+              content: `Error completing task: ${payload.taskId}`,
+              timestamp,
+            };
+            setMessages(prev => {
+              const newMessages = [...prev, errorMessage];
+              saveConversationMessages(sessionId, newMessages);
+              return newMessages;
+            });
+            optionsRef.current.onError?.(`Failed to complete task: ${payload.taskId}`);
           }
           return;
         }
@@ -718,6 +770,28 @@ export const useChatSocket = (options: UseChatSocketOptions = {}) => {
     }
   }, [isConnected]);
 
+  const taskDone = useCallback((taskId: string) => {
+    if (!isConnected || !wsRef.current) {
+      setError('No active connection');
+      console.warn('[useChatSocket] Cannot mark task as done - WebSocket not connected');
+      return;
+    }
+
+    try {
+      console.log('[useChatSocket] Marking task as done:', taskId);
+      const out = {
+        action: 'taskdone' as const,
+        payload: { taskId }
+      };
+      wsRef.current.sendJson(out);
+    } catch (err) {
+      const errorMessage = 'Error marking task as done';
+      setError(errorMessage);
+      optionsRef.current.onError?.(errorMessage);
+      console.error('[useChatSocket] Error sending taskdone:', err);
+    }
+  }, [isConnected]);
+
   const clearMessages = useCallback(() => {
     setMessages([]);
     if (sessionId) {
@@ -745,6 +819,7 @@ export const useChatSocket = (options: UseChatSocketOptions = {}) => {
     sendMessage,
     getRecipes,
     getRecipe,
+    taskDone,
     clearMessages,
   };
 };
