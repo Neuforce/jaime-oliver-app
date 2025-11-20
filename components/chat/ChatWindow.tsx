@@ -67,12 +67,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       {/* Messages Area */}
       <div className="flex-1 min-h-0 overflow-y-scroll p-4 space-y-3" style={{ WebkitOverflowScrolling: 'touch' }}>
         {messages.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-gray-400">
-            <div className="text-center">
-              <div className="text-3xl mb-3">💬</div>
-              <p className="text-gray-500">Start a conversation</p>
-            </div>
-          </div>
+          <div className="flex-1"></div>
         ) : (
           messages.map((message, index) => {
             // Show separator after recipe list to separate it from conversation
@@ -122,7 +117,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       <MessageInput
         onSendMessage={onSendMessage}
         disabled={isLoading}
-        placeholder={isLoading ? 'Waiting...' : 'Ask me anything about cooking...'}
+        placeholder={isLoading ? 'Waiting...' : 'Type a message...'}
         enableVoiceInput={ENABLE_VOICE_INPUT}
       />
     </div>

@@ -35,6 +35,7 @@ function ChatPageContent() {
   });
   
   const [initialMessages, setInitialMessages] = useState<ChatMessage[]>([]);
+  const [hasRequestedRecipes, setHasRequestedRecipes] = useState(false);
   
   const {
     messages,
@@ -64,6 +65,7 @@ function ChatPageContent() {
   useEffect(() => {
     const loadConversation = async () => {
       const conversationId = searchParams.get('conversation');
+      const starter = searchParams.get('starter');
       
       if (conversationId) {
         try {
@@ -76,6 +78,17 @@ function ChatPageContent() {
         } catch (error) {
           console.error('[ChatPage] Error loading conversation:', error);
         }
+      } else if (starter) {
+        // If we have a starter question, add it as the first user message
+        const userMessage: ChatMessage = {
+          type: 'message',
+          sender: 'user',
+          session_id: sessionId,
+          content: starter,
+          timestamp: new Date().toISOString(),
+        };
+        setInitialMessages([userMessage]);
+        console.log('[ChatPage] Added starter question as user message:', starter);
       } else {
         console.log('[ChatPage] Starting fresh chat with session:', sessionId.slice(0, 8) + '...');
       }
@@ -84,18 +97,19 @@ function ChatPageContent() {
     loadConversation();
   }, [searchParams, sessionId]);
 
-  // Request recipes when WebSocket is connected (for starter questions or manual input)
+  // Request recipes when WebSocket is connected (for starter questions)
   useEffect(() => {
     const starter = searchParams.get('starter');
-    if (starter && isConnected && sessionId) {
+    if (starter && isConnected && sessionId && !hasRequestedRecipes) {
       // Wait a bit for connection to be fully ready, then request recipes
       const timer = setTimeout(() => {
-        console.log('[ChatPage] Requesting recipes from backend for:', starter);
+        console.log('[ChatPage] Requesting recipes from backend for starter:', starter);
         getRecipes();
+        setHasRequestedRecipes(true);
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [isConnected, searchParams, sessionId, getRecipes]);
+  }, [isConnected, searchParams, sessionId, hasRequestedRecipes, getRecipes]);
   
   // Note: WebSocket connection is now automatic when useChatSocket hook mounts
   // The connection happens automatically when sessionId is available
