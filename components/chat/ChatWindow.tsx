@@ -3,12 +3,14 @@ import { ChatMessage } from '../../types/chat';
 import { MessageBubble } from './MessageBubble';
 import { MessageInput } from './MessageInput';
 import { VoiceInstructions } from './VoiceInstructions';
+import { ENABLE_VOICE_INPUT } from '../../config/features';
 
 interface ChatWindowProps {
   messages: ChatMessage[];
   onSendMessage: (message: string) => void;
   isLoading?: boolean;
   getRecipe?: (workflowId: string) => void;
+  startRecipe?: (workflowId: string) => void;
   taskDone?: (taskId: string) => void;
 }
 
@@ -17,11 +19,26 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   onSendMessage,
   isLoading = false,
   getRecipe,
+  startRecipe,
   taskDone,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [showVoiceInstructions, setShowVoiceInstructions] = useState(false);
   const [hasExpandedRecipe, setHasExpandedRecipe] = useState(false);
+
+  // Filter contextual messages (only scheduled_task from system)
+  const contextualMessages = messages.filter(msg => 
+    msg.sender === 'system' && 
+    msg.type === 'message' &&
+    msg.content.startsWith('⏰')
+  );
+
+  console.log('[ChatWindow] Total messages:', messages.length);
+  console.log('[ChatWindow] Messages array:', messages.map(m => ({
+    sender: m.sender,
+    type: m.type,
+    content: m.content.substring(0, 30)
+  })));
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -32,21 +49,23 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   }, [messages]);
 
   useEffect(() => {
-    // Show voice instructions when chat starts
-    if (messages.length === 0) {
+    // Show voice instructions when chat starts (only if voice is enabled)
+    if (ENABLE_VOICE_INPUT && messages.length === 0) {
       setShowVoiceInstructions(true);
     }
   }, [messages.length]);
 
   return (
-    <div className="flex flex-col h-full">
-      <VoiceInstructions 
-        isVisible={showVoiceInstructions}
-        onClose={() => setShowVoiceInstructions(false)}
-      />
+    <div className="flex-1 flex flex-col min-h-0">
+      {ENABLE_VOICE_INPUT && (
+        <VoiceInstructions 
+          isVisible={showVoiceInstructions}
+          onClose={() => setShowVoiceInstructions(false)}
+        />
+      )}
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-1 min-h-0 overflow-y-scroll p-4 space-y-3" style={{ WebkitOverflowScrolling: 'touch' }}>
         {messages.length === 0 ? (
           <div className="flex items-center justify-center h-full text-gray-400">
             <div className="text-center">
@@ -55,16 +74,30 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             </div>
           </div>
         ) : (
-          messages.map((message, index) => (
-            <MessageBubble 
-              key={`${message.timestamp}-${index}`} 
-              message={message}
-              hasExpandedRecipe={hasExpandedRecipe}
-              onRecipeExpandedChange={setHasExpandedRecipe}
-              getRecipe={getRecipe}
-              taskDone={taskDone}
-            />
-          ))
+          messages.map((message, index) => {
+            // Show separator after recipe list to separate it from conversation
+            const isRecipeList = message.type === 'recipeList';
+            const nextMessage = messages[index + 1];
+            const showSeparator = isRecipeList && nextMessage;
+
+            return (
+              <React.Fragment key={`${message.timestamp}-${index}`}>
+                <MessageBubble 
+                  message={message}
+                  hasExpandedRecipe={hasExpandedRecipe}
+                  onRecipeExpandedChange={setHasExpandedRecipe}
+                  getRecipe={getRecipe}
+                  startRecipe={startRecipe}
+                  taskDone={taskDone}
+                  contextualMessages={contextualMessages}
+                />
+                {/* Separator between recipe section and conversation */}
+                {showSeparator && (
+                  <div className="my-6 border-t border-gray-200"></div>
+                )}
+              </React.Fragment>
+            );
+          })
         )}
         
         {isLoading && (
@@ -90,7 +123,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         onSendMessage={onSendMessage}
         disabled={isLoading}
         placeholder={isLoading ? 'Waiting...' : 'Ask me anything about cooking...'}
-        enableVoiceInput={true}
+        enableVoiceInput={ENABLE_VOICE_INPUT}
       />
     </div>
   );

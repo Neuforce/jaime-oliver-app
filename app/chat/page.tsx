@@ -6,12 +6,34 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { ChatWindow } from '../../components/chat/ChatWindow';
 import { useChatSocket } from '../../hooks/useChatSocket';
 import { getConversationMessages, setCurrentConversation } from '../../lib/conversationHistory';
+import { getOrCreateSessionId } from '../../lib/session';
 import { ChatMessage } from '../../types/chat';
 
 function ChatPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [initialSessionId, setInitialSessionId] = useState<string | undefined>();
+  
+  // CRITICAL: Always ensure we have a session_id from the start
+  // This prevents "No active connection" errors by guaranteeing a valid UUID session
+  const [sessionId] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    
+    // Check if we have a conversation ID in URL params
+    const urlParams = new URLSearchParams(window.location.search);
+    const conversationId = urlParams.get('conversation');
+    
+    if (conversationId) {
+      // Use existing conversation ID
+      console.log('[ChatPage] Using existing conversation:', conversationId);
+      return conversationId;
+    }
+    
+    // Otherwise get or create a session
+    const id = getOrCreateSessionId();
+    console.log('[ChatPage] Session ID initialized:', id.slice(0, 8) + '...');
+    return id;
+  });
+  
   const [initialMessages, setInitialMessages] = useState<ChatMessage[]>([]);
   
   const {
@@ -23,71 +45,57 @@ function ChatPageContent() {
     sendMessage,
     getRecipes,
     getRecipe,
+    startRecipe,
     taskDone,
   } = useChatSocket({
-    initialSessionId,
+    initialSessionId: sessionId,
     initialMessages,
     onConnect: () => {
-      console.log('Connected to chat');
+      console.log('[ChatPage] Connected to chat with session:', sessionId.slice(0, 8) + '...');
     },
     onDisconnect: () => {
-      console.log('Disconnected from chat');
+      console.log('[ChatPage] Disconnected from chat');
     },
     onError: (error) => {
-      console.error('Chat error:', error);
+      console.error('[ChatPage] Chat error:', error);
     },
   });
 
   useEffect(() => {
     const loadConversation = async () => {
       const conversationId = searchParams.get('conversation');
-      const starter = searchParams.get('starter');
       
       if (conversationId) {
         try {
           const savedMessages = getConversationMessages(conversationId);
           setCurrentConversation(conversationId);
           
-          // Set initial data for the hook
-          setInitialSessionId(conversationId);
+          // Load saved messages for existing conversation
           setInitialMessages(savedMessages);
+          console.log('[ChatPage] Loaded', savedMessages.length, 'messages for conversation:', conversationId.slice(0, 8) + '...');
         } catch (error) {
-          console.error('Error loading conversation:', error);
+          console.error('[ChatPage] Error loading conversation:', error);
         }
-      } else if (starter) {
-        // Prime a new session with the starter
-        const newSessionId = `${Date.now()}`;
-        setInitialSessionId(newSessionId);
-        const now = new Date().toISOString();
-        // Add user message immediately
-        const initial: ChatMessage[] = [
-          {
-            type: 'message',
-            sender: 'user',
-            session_id: newSessionId,
-            content: starter,
-            timestamp: now,
-          },
-        ];
-        setInitialMessages(initial);
+      } else {
+        console.log('[ChatPage] Starting fresh chat with session:', sessionId.slice(0, 8) + '...');
       }
     };
     
     loadConversation();
-  }, [searchParams]);
+  }, [searchParams, sessionId]);
 
-  // Call getRecipes when WebSocket is connected and we have a starter
+  // Request recipes when WebSocket is connected (for starter questions or manual input)
   useEffect(() => {
     const starter = searchParams.get('starter');
-    if (starter && isConnected && initialSessionId) {
+    if (starter && isConnected && sessionId) {
       // Wait a bit for connection to be fully ready, then request recipes
       const timer = setTimeout(() => {
-        console.log('[ChatPage] Requesting recipes from backend...');
+        console.log('[ChatPage] Requesting recipes from backend for:', starter);
         getRecipes();
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [isConnected, searchParams, initialSessionId, getRecipes]);
+  }, [isConnected, searchParams, sessionId, getRecipes]);
   
   // Note: WebSocket connection is now automatic when useChatSocket hook mounts
   // The connection happens automatically when sessionId is available
@@ -100,9 +108,9 @@ function ChatPageContent() {
 
   return (
     <div className="h-screen flex flex-col bg-white">
-      <div className="w-full mx-auto md:max-w-[700px] flex flex-col h-full">
+      <div className="w-full mx-auto md:max-w-[700px] flex flex-col flex-1">
         {/* Top bar */}
-        <div className="px-4 pt-3 pb-2 flex items-center justify-center relative">
+        <div className="px-4 pt-3 pb-2 flex items-center justify-center relative flex-shrink-0">
           <button
             onClick={handleBackToHome}
             aria-label="Back"
@@ -127,15 +135,16 @@ function ChatPageContent() {
       )}
 
       {/* Chat Window */}
-      <div className="flex-1 overflow-hidden">
-              <ChatWindow
-                messages={messages}
-                onSendMessage={sendMessage}
-                isLoading={isLoading}
-                getRecipe={getRecipe}
-                taskDone={taskDone}
-              />
-        </div>
+      <div className="flex-1 min-h-0">
+        <ChatWindow
+          messages={messages}
+          onSendMessage={sendMessage}
+          isLoading={isLoading}
+          getRecipe={getRecipe}
+          startRecipe={startRecipe}
+          taskDone={taskDone}
+        />
+      </div>
       </div>
     </div>
   );

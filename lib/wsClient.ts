@@ -6,7 +6,7 @@ type Listener = (...args: any[]) => void;
 type Events = 'open' | 'close' | 'message' | 'error';
 
 export type OutgoingMessage = {
-  action: 'sendtext' | 'sendvoice' | 'getrecipes' | 'getrecipe' | 'taskdone';
+  action: 'sendtext' | 'sendvoice' | 'getrecipes' | 'getrecipe' | 'startrecipe' | 'taskdone';
   payload: any;
 };
 

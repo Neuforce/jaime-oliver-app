@@ -2,14 +2,17 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { RecipeItem } from '../../types/chat';
+import { RecipeItem, ChatMessage } from '../../types/chat';
+import { getNextIngredientImage, getNextUtensilImage, getNextStepImage } from '../../lib/defaultImages';
 
 interface RecipeAccordionProps {
   recipes: RecipeItem[];
   onExpandChange?: (isExpanded: boolean) => void;
   onRecipeSelected?: (recipeTitle: string | null) => void;
   getRecipe?: (workflowId: string) => void;
+  startRecipe?: (workflowId: string) => void;
   taskDone?: (taskId: string) => void;
+  contextualMessages?: ChatMessage[]; // Messages to show contextually (text, scheduled_task)
 }
 
 // Simple function to convert markdown bold to HTML
@@ -24,38 +27,38 @@ const renderMarkdown = (text: string) => {
   });
 };
 
-// Helper function to get fallback image for ingredient
+// Helper function to get fallback image for ingredient using Unsplash
 const getIngredientFallbackImage = (ingredientName: string): string => {
   const normalizedName = ingredientName.toLowerCase().trim();
   const ingredientImages: Record<string, string> = {
-    'garlic': '/images/ingredients/garlic.png',
-    'celery': '/images/ingredients/celery.png',
-    'fennel': '/images/ingredients/fennel.png',
-    'courgette': '/images/ingredients/courgette.png',
-    'zucchini': '/images/ingredients/courgette.png',
-    'pasta': '/images/ingredients/pasta.png',
-    'linguine': '/images/ingredients/pasta.png',
-    'tagliatelle': '/images/ingredients/pasta.png',
-    'spaghetti': '/images/ingredients/pasta.png',
-    'olive oil': '/images/ingredients/olive-oil.png',
-    'tomatoes': '/images/ingredients/tomatoes.png',
-    'tomato': '/images/ingredients/tomatoes.png',
-    'mussels': '/images/ingredients/mussels.png',
-    'mussel': '/images/ingredients/mussels.png',
-    'lemon': '/images/ingredients/lemon.png',
-    'rocket': '/images/ingredients/rocket.png',
-    'arugula': '/images/ingredients/rocket.png',
-    'salt': '/images/ingredients/salt.png',
-    'pepper': '/images/ingredients/pepper.png',
-    'butter': '/images/ingredients/butter.png',
-    'parmesan': '/images/ingredients/parmesan.png',
-    'basil': '/images/ingredients/basil.png',
-    'squash': '/images/ingredients/squash.png',
-    'butternut squash': '/images/ingredients/squash.png',
-    'risotto': '/images/ingredients/risotto.png',
-    'arborio rice': '/images/ingredients/risotto.png',
-    'stock': '/images/ingredients/stock.png',
-    'vegetable stock': '/images/ingredients/stock.png',
+    'garlic': 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=200&h=200&fit=crop&auto=format',
+    'celery': 'https://images.unsplash.com/photo-1599599810769-bcde5a160d32?w=200&h=200&fit=crop&auto=format',
+    'fennel': 'https://images.unsplash.com/photo-1615485925503-6e4c5e69a0ff?w=200&h=200&fit=crop&auto=format',
+    'courgette': 'https://images.unsplash.com/photo-1592841200221-a6898db4a4d5?w=200&h=200&fit=crop&auto=format',
+    'zucchini': 'https://images.unsplash.com/photo-1592841200221-a6898db4a4d5?w=200&h=200&fit=crop&auto=format',
+    'pasta': 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=200&h=200&fit=crop&auto=format',
+    'linguine': 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=200&h=200&fit=crop&auto=format',
+    'tagliatelle': 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=200&h=200&fit=crop&auto=format',
+    'spaghetti': 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=200&h=200&fit=crop&auto=format',
+    'olive oil': 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=200&h=200&fit=crop&auto=format',
+    'tomatoes': 'https://images.unsplash.com/photo-1546470427-e26264be0d42?w=200&h=200&fit=crop&auto=format',
+    'tomato': 'https://images.unsplash.com/photo-1546470427-e26264be0d42?w=200&h=200&fit=crop&auto=format',
+    'mussels': 'https://images.unsplash.com/photo-1609501676725-7186f3a1f2f4?w=200&h=200&fit=crop&auto=format',
+    'mussel': 'https://images.unsplash.com/photo-1609501676725-7186f3a1f2f4?w=200&h=200&fit=crop&auto=format',
+    'lemon': 'https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?w=200&h=200&fit=crop&auto=format',
+    'rocket': 'https://images.unsplash.com/photo-1615485500902-0b3e3b0b0b0b?w=200&h=200&fit=crop&auto=format',
+    'arugula': 'https://images.unsplash.com/photo-1615485500902-0b3e3b0b0b0b?w=200&h=200&fit=crop&auto=format',
+    'salt': 'https://images.unsplash.com/photo-1608039829570-cc98a2e0a682?w=200&h=200&fit=crop&auto=format',
+    'pepper': 'https://images.unsplash.com/photo-1608039829570-cc98a2e0a682?w=200&h=200&fit=crop&auto=format',
+    'butter': 'https://images.unsplash.com/photo-1618164436262-32a3b2e2b5a5?w=200&h=200&fit=crop&auto=format',
+    'parmesan': 'https://images.unsplash.com/photo-1618164436262-32a3b2e2b5a5?w=200&h=200&fit=crop&auto=format',
+    'basil': 'https://images.unsplash.com/photo-1615485500902-0b3e3b0b0b0b?w=200&h=200&fit=crop&auto=format',
+    'squash': 'https://images.unsplash.com/photo-1592841200221-a6898db4a4d5?w=200&h=200&fit=crop&auto=format',
+    'butternut squash': 'https://images.unsplash.com/photo-1592841200221-a6898db4a4d5?w=200&h=200&fit=crop&auto=format',
+    'risotto': 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=200&h=200&fit=crop&auto=format',
+    'arborio rice': 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=200&h=200&fit=crop&auto=format',
+    'stock': 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=200&fit=crop&auto=format',
+    'vegetable stock': 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=200&fit=crop&auto=format',
   };
   
   // Try exact match
@@ -70,34 +73,35 @@ const getIngredientFallbackImage = (ingredientName: string): string => {
     }
   }
   
-  return '/images/ingredients/default.png';
+  // Fallback to generic ingredient image
+  return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=200&fit=crop&auto=format';
 };
 
-// Helper function to get fallback image for utensil
+// Helper function to get fallback image for utensil using Unsplash
 const getUtensilFallbackImage = (utensilName: string): string => {
   const normalizedName = utensilName.toLowerCase().trim();
   const utensilImages: Record<string, string> = {
-    'knife': '/images/utensils/knife.png',
-    'sharp knife': '/images/utensils/knife.png',
-    'cutting board': '/images/utensils/cutting-board.png',
-    'pot': '/images/utensils/pot.png',
-    'large pot': '/images/utensils/pot.png',
-    'frying pan': '/images/utensils/pan.png',
-    'pan': '/images/utensils/pan.png',
-    'large frying pan': '/images/utensils/pan.png',
-    'colander': '/images/utensils/colander.png',
-    'spoon': '/images/utensils/spoon.png',
-    'wooden spoon': '/images/utensils/spoon.png',
-    'spatula': '/images/utensils/spatula.png',
-    'tongs': '/images/utensils/tongs.png',
-    'bowl': '/images/utensils/bowl.png',
-    'small bowl': '/images/utensils/bowl.png',
-    'plate': '/images/utensils/plate.png',
-    'serving plate': '/images/utensils/plate.png',
-    'lid': '/images/utensils/lid.png',
-    'zester': '/images/utensils/zester.png',
-    'grater': '/images/utensils/grater.png',
-    'ladle': '/images/utensils/ladle.png',
+    'knife': 'https://images.unsplash.com/photo-1594736797933-d0cbc0b0c4e1?w=200&h=200&fit=crop&auto=format',
+    'sharp knife': 'https://images.unsplash.com/photo-1594736797933-d0cbc0b0c4e1?w=200&h=200&fit=crop&auto=format',
+    'cutting board': 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=200&h=200&fit=crop&auto=format',
+    'pot': 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=200&h=200&fit=crop&auto=format',
+    'large pot': 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=200&h=200&fit=crop&auto=format',
+    'frying pan': 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=200&h=200&fit=crop&auto=format',
+    'pan': 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=200&h=200&fit=crop&auto=format',
+    'large frying pan': 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=200&h=200&fit=crop&auto=format',
+    'colander': 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=200&h=200&fit=crop&auto=format',
+    'spoon': 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=200&h=200&fit=crop&auto=format',
+    'wooden spoon': 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=200&h=200&fit=crop&auto=format',
+    'spatula': 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=200&h=200&fit=crop&auto=format',
+    'tongs': 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=200&h=200&fit=crop&auto=format',
+    'bowl': 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=200&h=200&fit=crop&auto=format',
+    'small bowl': 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=200&h=200&fit=crop&auto=format',
+    'plate': 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=200&h=200&fit=crop&auto=format',
+    'serving plate': 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=200&h=200&fit=crop&auto=format',
+    'lid': 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=200&h=200&fit=crop&auto=format',
+    'zester': 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=200&h=200&fit=crop&auto=format',
+    'grater': 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=200&h=200&fit=crop&auto=format',
+    'ladle': 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=200&h=200&fit=crop&auto=format',
   };
   
   // Try exact match
@@ -112,7 +116,8 @@ const getUtensilFallbackImage = (utensilName: string): string => {
     }
   }
   
-  return '/images/utensils/default.png';
+  // Fallback to generic utensil image
+  return 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=200&h=200&fit=crop&auto=format';
 };
 
 // Function to parse and render detailedDescription markdown into numbered instructions
@@ -191,7 +196,40 @@ const renderDetailedDescription = (detailedDescription: string | undefined): Rea
   return instructions.length > 0 ? instructions : null;
 };
 
-export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExpandChange, onRecipeSelected, getRecipe, taskDone }) => {
+// Separator component for contextual messages
+const MessageSeparator: React.FC = () => (
+  <div className="flex items-center gap-2 my-4">
+    <div className="flex-1 h-px bg-gray-200"></div>
+    <div className="text-xs text-gray-400 uppercase tracking-wider">Message</div>
+    <div className="flex-1 h-px bg-gray-200"></div>
+  </div>
+);
+
+// Component to render contextual messages (text, scheduled_task)
+const ContextualMessage: React.FC<{ message: ChatMessage }> = ({ message }) => {
+  const isScheduledTask = message.sender === 'system' && message.content.startsWith('⏰');
+  
+  return (
+    <div className={`p-4 rounded-lg ${isScheduledTask ? 'bg-orange-50 border border-orange-200' : 'bg-blue-50 border border-blue-200'}`}>
+      <div className="text-sm text-gray-800 whitespace-pre-wrap">
+        {message.content}
+      </div>
+      <div className="text-xs text-gray-500 mt-2">
+        {new Date(message.timestamp).toLocaleTimeString()}
+      </div>
+    </div>
+  );
+};
+
+export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ 
+  recipes, 
+  onExpandChange, 
+  onRecipeSelected, 
+  getRecipe, 
+  startRecipe, 
+  taskDone,
+  contextualMessages = []
+}) => {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [videoModalOpen, setVideoModalOpen] = useState<boolean>(false);
   const [ingredientsModalOpen, setIngredientsModalOpen] = useState<boolean>(false);
@@ -333,6 +371,13 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
 
   const handleStartCooking = (recipeIdx: number) => {
     if (recipes[recipeIdx]?.steps && recipes[recipeIdx].steps!.length > 0) {
+      // Get workflowId from recipe
+      const recipe = recipes[recipeIdx] as RecipeItem & { workflowId?: string };
+      if (recipe.workflowId && startRecipe) {
+        console.log('[RecipeAccordion] Starting recipe with workflowId:', recipe.workflowId);
+        startRecipe(recipe.workflowId);
+      }
+      
       setIsStepViewActive(true);
       setCurrentStepIndex(0);
       setCurrentRecipeIndex(recipeIdx);
@@ -511,7 +556,11 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
                   className="object-cover"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
-                    target.src = 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400';
+                    // Try next available step image from the library
+                    const nextImage = getNextStepImage(target.src);
+                    if (target.src !== nextImage) {
+                      target.src = nextImage;
+                    }
                   }}
                 />
                 <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 hover:bg-opacity-40 transition-opacity">
@@ -540,6 +589,18 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
           ) : (
             <div className="space-y-4">
               <p className="text-gray-500 italic">No instructions available for this step.</p>
+            </div>
+          )}
+
+          {/* Contextual Messages - Scenario 1: Inside step flow */}
+          {isStepViewActive && contextualMessages.length > 0 && (
+            <div className="mt-4">
+              <MessageSeparator />
+              {contextualMessages.map((msg, idx) => (
+                <div key={`${msg.timestamp}-${idx}`} className="mb-3">
+                  <ContextualMessage message={msg} />
+                </div>
+              ))}
             </div>
           )}
 
@@ -864,9 +925,12 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
                                   height={48}
                                   className="w-full h-full object-cover"
                                   onError={(e) => {
-                                    // Fallback si la imagen está rota
+                                    // Try next available step image from the library
                                     const target = e.target as HTMLImageElement;
-                                    target.src = 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400';
+                                    const nextImage = getNextStepImage(target.src);
+                                    if (target.src !== nextImage) {
+                                      target.src = nextImage;
+                                    }
                                   }}
                                 />
                               ) : (
@@ -900,6 +964,19 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
                         Hey, <strong>quick tip before we dive in</strong> — let me know when you finish each step. That way, I can keep up with you. Ready to start cooking?
                       </p>
                     </div>
+
+                    {/* Contextual Messages - Scenario 2: In recipe accordion */}
+                    {!isStepViewActive && contextualMessages.length > 0 && (
+                      <div className="mt-4">
+                        <MessageSeparator />
+                        {contextualMessages.map((msg, idx) => (
+                          <div key={`${msg.timestamp}-${idx}`} className="mb-3">
+                            <ContextualMessage message={msg} />
+                          </div>
+                        ))}
+                        <MessageSeparator />
+                      </div>
+                    )}
 
                     {/* Separator Line */}
                     <div className="border-t border-gray-200 my-3"></div>
@@ -1004,9 +1081,10 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
                           className="w-full h-full object-cover"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
-                            const fallbackImage = getIngredientFallbackImage(ingredient.name);
-                            if (target.src !== fallbackImage) {
-                              target.src = fallbackImage;
+                            // Try next available ingredient image from the library
+                            const nextImage = getNextIngredientImage(target.src);
+                            if (target.src !== nextImage) {
+                              target.src = nextImage;
                             }
                           }}
                         />
@@ -1123,9 +1201,10 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({ recipes, onExp
                           className="w-full h-full object-cover"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
-                            const fallbackImage = getUtensilFallbackImage(utensil.name);
-                            if (target.src !== fallbackImage) {
-                              target.src = fallbackImage;
+                            // Try next available utensil image from the library
+                            const nextImage = getNextUtensilImage(target.src);
+                            if (target.src !== nextImage) {
+                              target.src = nextImage;
                             }
                           }}
                         />

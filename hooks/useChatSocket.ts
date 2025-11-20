@@ -3,6 +3,7 @@ import { ChatMessage, WebSocketMessage, RecipeItem, RecipeWorkflow, RecipeDetail
 import { saveConversation, saveConversationMessages } from '../lib/conversationHistory';
 import { WsClient } from '../lib/wsClient';
 import { useSessionId } from './useSessionId';
+import { getIngredientImage, getUtensilImage, getStepImage, isValidImageUrl } from '../lib/defaultImages';
 
 // Default images mapping for recipes (can be expanded)
 const DEFAULT_RECIPE_IMAGES: Record<string, string> = {
@@ -18,128 +19,6 @@ const DEFAULT_RECIPE_IMAGES: Record<string, string> = {
 const getDefaultRecipeImage = (recipeName: string): string => {
   const normalizedName = recipeName.toLowerCase().trim();
   return DEFAULT_RECIPE_IMAGES[normalizedName] || '/images/jacket-potato.png'; // Fallback to default
-};
-
-// Helper function to check if a URL is a valid image URL
-const isValidImageUrl = (url: string | undefined): boolean => {
-  if (!url) return false;
-  // Check if it's a local path (starts with /)
-  if (url.startsWith('/')) return true;
-  // Check if it ends with common image extensions
-  const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'];
-  const lowerUrl = url.toLowerCase();
-  return imageExtensions.some(ext => lowerUrl.includes(ext)) && !lowerUrl.includes('/recipes/');
-};
-
-// Local images mapping for ingredients (can be expanded)
-const INGREDIENT_IMAGES: Record<string, string> = {
-  'garlic': '/images/ingredients/garlic.png',
-  'celery': '/images/ingredients/celery.png',
-  'fennel': '/images/ingredients/fennel.png',
-  'courgette': '/images/ingredients/courgette.png',
-  'zucchini': '/images/ingredients/courgette.png', // Alternative name
-  'pasta': '/images/ingredients/pasta.png',
-  'linguine': '/images/ingredients/pasta.png',
-  'tagliatelle': '/images/ingredients/pasta.png',
-  'spaghetti': '/images/ingredients/pasta.png',
-  'olive oil': '/images/ingredients/olive-oil.png',
-  'tomatoes': '/images/ingredients/tomatoes.png',
-  'tomato': '/images/ingredients/tomatoes.png',
-  'mussels': '/images/ingredients/mussels.png',
-  'mussel': '/images/ingredients/mussels.png',
-  'lemon': '/images/ingredients/lemon.png',
-  'rocket': '/images/ingredients/rocket.png',
-  'arugula': '/images/ingredients/rocket.png', // Alternative name
-  'salt': '/images/ingredients/salt.png',
-  'pepper': '/images/ingredients/pepper.png',
-  'butter': '/images/ingredients/butter.png',
-  'parmesan': '/images/ingredients/parmesan.png',
-  'basil': '/images/ingredients/basil.png',
-  'squash': '/images/ingredients/squash.png',
-  'butternut squash': '/images/ingredients/squash.png',
-  'risotto': '/images/ingredients/risotto.png',
-  'arborio rice': '/images/ingredients/risotto.png',
-  'stock': '/images/ingredients/stock.png',
-  'vegetable stock': '/images/ingredients/stock.png',
-  // Add more mappings as needed
-};
-
-// Local images mapping for utensils/equipment (can be expanded)
-const UTENSIL_IMAGES: Record<string, string> = {
-  'knife': '/images/utensils/knife.png',
-  'sharp knife': '/images/utensils/knife.png',
-  'cutting board': '/images/utensils/cutting-board.png',
-  'pot': '/images/utensils/pot.png',
-  'large pot': '/images/utensils/pot.png',
-  'frying pan': '/images/utensils/pan.png',
-  'pan': '/images/utensils/pan.png',
-  'large frying pan': '/images/utensils/pan.png',
-  'colander': '/images/utensils/colander.png',
-  'spoon': '/images/utensils/spoon.png',
-  'wooden spoon': '/images/utensils/spoon.png',
-  'spatula': '/images/utensils/spatula.png',
-  'tongs': '/images/utensils/tongs.png',
-  'bowl': '/images/utensils/bowl.png',
-  'small bowl': '/images/utensils/bowl.png',
-  'plate': '/images/utensils/plate.png',
-  'serving plate': '/images/utensils/plate.png',
-  'lid': '/images/utensils/lid.png',
-  'zester': '/images/utensils/zester.png',
-  'grater': '/images/utensils/grater.png',
-  'ladle': '/images/utensils/ladle.png',
-  // Add more mappings as needed
-};
-
-// Helper function to get ingredient image (checks backend first, then local mapping)
-const getIngredientImage = (ingredientName: string, backendImageUrl?: string): string => {
-  // Priority 1: Use backend image if provided and valid
-  if (backendImageUrl && isValidImageUrl(backendImageUrl)) {
-    return backendImageUrl;
-  }
-  
-  // Priority 2: Try to find in local mapping by matching ingredient name
-  const normalizedName = ingredientName.toLowerCase().trim();
-  
-  // Try exact match first
-  if (INGREDIENT_IMAGES[normalizedName]) {
-    return INGREDIENT_IMAGES[normalizedName];
-  }
-  
-  // Try partial match (e.g., "2 cloves of garlic" -> "garlic")
-  for (const [key, imageUrl] of Object.entries(INGREDIENT_IMAGES)) {
-    if (normalizedName.includes(key)) {
-      return imageUrl;
-    }
-  }
-  
-  // Priority 3: Fallback to generic local image
-  return '/images/ingredients/default.png';
-};
-
-// Helper function to get utensil image (checks backend first, then local mapping)
-const getUtensilImage = (utensilName: string, backendImageUrl?: string): string => {
-  // Priority 1: Use backend image if provided and valid
-  if (backendImageUrl && isValidImageUrl(backendImageUrl)) {
-    return backendImageUrl;
-  }
-  
-  // Priority 2: Try to find in local mapping by matching utensil name
-  const normalizedName = utensilName.toLowerCase().trim();
-  
-  // Try exact match first
-  if (UTENSIL_IMAGES[normalizedName]) {
-    return UTENSIL_IMAGES[normalizedName];
-  }
-  
-  // Try partial match (e.g., "Large pot for pasta" -> "pot")
-  for (const [key, imageUrl] of Object.entries(UTENSIL_IMAGES)) {
-    if (normalizedName.includes(key)) {
-      return imageUrl;
-    }
-  }
-  
-  // Priority 3: Fallback to generic local image
-  return '/images/utensils/default.png';
 };
 
 // Transform backend workflow to RecipeItem
@@ -159,11 +38,11 @@ const transformRecipeDetailToRecipeItem = (recipeDetail: RecipeDetail): RecipeIt
   const definition = recipeDetail.definition;
   const metadata = definition?.metadata || {};
 
-  // Transform tasks to steps
+  // Transform tasks to steps with auto-generated images based on step content
   const steps = definition?.tasks?.map((task: RecipeTask) => ({
     title: task.name,
     duration: task.metadata?.cookingTime || task.timerDuration || task.metadata?.timerDuration || '',
-    icon: undefined, // Can be added later if needed
+    icon: getStepImage(task.name, task.description, task.metadata?.imageUrl), // Auto-generate image based on step action
     description: task.description, // Short description
     detailedDescription: task.metadata?.detailedDescription, // Full markdown description
     taskId: task.taskId, // Store taskId for taskdone action
@@ -285,6 +164,12 @@ export const useChatSocket = (options: UseChatSocketOptions = {}) => {
         }
 
         const message = parsedData as WebSocketMessage;
+        console.log('[useChatSocket] ====== FULL MESSAGE RECEIVED ======');
+        console.log('[useChatSocket] Type:', message.type);
+        console.log('[useChatSocket] MessageType:', message.messageType);
+        console.log('[useChatSocket] Payload:', message.payload);
+        console.log('[useChatSocket] Metadata:', message.metadata);
+        console.log('[useChatSocket] ===================================');
 
         // Handle recipes_list message from backend
         if (message.type === 'response' && message.messageType === 'recipes_list' && message.payload) {
@@ -368,6 +253,134 @@ export const useChatSocket = (options: UseChatSocketOptions = {}) => {
             // Call the onMessage callback
             optionsRef.current.onMessage?.(chatMessage);
           }
+          return;
+        }
+
+        // Handle recipe_started message from backend
+        if (message.type === 'response' && message.messageType === 'recipe_started' && message.payload) {
+          const payload = message.payload as {
+            action: 'startrecipe';
+            status: 'success' | 'error';
+            requestId: string;
+            workflowId: string;
+            data?: any;
+            error?: string;
+          };
+          const timestamp = message.metadata?.timestamp || new Date().toISOString();
+
+          if (payload.status === 'success') {
+            console.log('[useChatSocket] Recipe started successfully:', payload.workflowId, payload.data);
+
+            // Don't show a message for successful recipe start - the UI already handles this
+            // Just log the data for debugging
+            if (payload.data) {
+              console.log('[useChatSocket] Recipe session data:', payload.data);
+            }
+          } else if (payload.status === 'error') {
+            const errorMessage: ChatMessage = {
+              type: 'status',
+              sender: 'system',
+              session_id: sessionId,
+              content: `❌ Error starting recipe: ${payload.error || 'Unknown error'}`,
+              timestamp,
+            };
+            setMessages(prev => {
+              const newMessages = [...prev, errorMessage];
+              saveConversationMessages(sessionId, newMessages);
+              return newMessages;
+            });
+            optionsRef.current.onError?.(`Failed to start recipe: ${payload.error || 'Unknown error'}`);
+          }
+          return;
+        }
+
+        // Handle text message from backend (both 'text' and 'text_message')
+        if (message.type === 'response' && (message.messageType === 'text' || message.messageType === 'text_message') && message.payload) {
+          const payload = message.payload as { message: string; conversationId: string | null };
+          const timestamp = message.metadata?.timestamp || new Date().toISOString();
+
+          if (payload.message) {
+            console.log('[useChatSocket] Received text message from backend:', payload.message.substring(0, 50) + '...');
+            
+            // Create a chat message from the text response
+            const chatMessage: ChatMessage = {
+              type: 'message',
+              sender: 'agent',
+              session_id: sessionId,
+              content: payload.message,
+              timestamp,
+            };
+
+            console.log('[useChatSocket] About to add message to state:', chatMessage);
+
+            // Add message to state
+            setMessages(prev => {
+              console.log('[useChatSocket] Current messages count:', prev.length);
+              const newMessages = [...prev, chatMessage];
+              console.log('[useChatSocket] New messages count:', newMessages.length);
+              saveConversationMessages(sessionId, newMessages);
+              return newMessages;
+            });
+
+            // Call the onMessage callback
+            optionsRef.current.onMessage?.(chatMessage);
+            
+            // Stop loading indicator
+            setIsLoading(false);
+            console.log('[useChatSocket] Message added successfully, loading stopped');
+          }
+          return;
+        }
+
+        // Handle scheduled_task message from backend
+        if (message.type === 'response' && message.messageType === 'scheduled_task' && message.payload) {
+          const payload = message.payload as {
+            sessionId: string;
+            taskId: string;
+            type: string;
+            name: string;
+            metadata?: {
+              category?: string;
+              priority?: string;
+              checkPoints?: string[];
+              detailedDescription?: string;
+            };
+            next?: string[];
+            description?: string;
+          };
+          const timestamp = message.metadata?.timestamp || new Date().toISOString();
+
+          console.log('[useChatSocket] Scheduled task triggered:', payload.name, payload.taskId);
+
+          // Create a rich message with the scheduled task information
+          const taskMessage: ChatMessage = {
+            type: 'message',
+            sender: 'system',
+            session_id: sessionId,
+            content: `⏰ **${payload.name}**\n\n${payload.metadata?.detailedDescription || payload.description || 'Time to check on your cooking!'}`,
+            timestamp,
+          };
+
+          // Add message to state
+          setMessages(prev => {
+            const newMessages = [...prev, taskMessage];
+            saveConversationMessages(sessionId, newMessages);
+            return newMessages;
+          });
+
+          // Call the onMessage callback
+          optionsRef.current.onMessage?.(taskMessage);
+
+          // Log check points if available
+          if (payload.metadata?.checkPoints && payload.metadata.checkPoints.length > 0) {
+            console.log('[useChatSocket] Check points for task:', payload.metadata.checkPoints);
+          }
+
+          // Log next tasks if available
+          if (payload.next && payload.next.length > 0) {
+            console.log('[useChatSocket] Next tasks after scheduled task:', payload.next);
+          }
+
           return;
         }
 
@@ -572,7 +585,7 @@ export const useChatSocket = (options: UseChatSocketOptions = {}) => {
   }, []);
 
   const sendMessage = useCallback(async (content: string) => {
-    if (!isConnected) {
+    if (!isConnected || !wsRef.current) {
       setError('No active connection');
       return;
     }
@@ -596,133 +609,22 @@ export const useChatSocket = (options: UseChatSocketOptions = {}) => {
         return newMessages;
       });
 
-      // Send message to workflow system
-      const response = await fetch('/api/workflow/sendMessage', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          session_id: sessionId,
-          message: content,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Error sending message');
-      }
-
-      // Simulate agent response after a delay
-      setTimeout(() => {
-        // Randomly decide response type
-        const responseType = Math.random();
-        const shouldSendVideo = responseType < 0.25; // 25% chance of video response
-        const shouldSendAudio = responseType >= 0.25 && responseType < 0.45; // 20% chance of audio response
-        
-        let agentMessage: ChatMessage;
-        
-        if (shouldSendVideo) {
-          // Sample video responses
-          const videoResponses = [
-            {
-              content: "Here's a helpful video that might answer your question:",
-              videoUrl: "https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4",
-              videoTitle: "Sample Video Response",
-              videoThumbnail: "https://via.placeholder.com/320x180/4F46E5/FFFFFF?text=Video+Response"
-            },
-            {
-              content: "I found this video that explains exactly what you're asking about:",
-              videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-              videoTitle: "Big Buck Bunny - Sample Video",
-              videoThumbnail: "https://via.placeholder.com/320x180/059669/FFFFFF?text=Big+Buck+Bunny"
-            },
-            {
-              content: "This video tutorial should help you understand better:",
-              videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-              videoTitle: "Elephant's Dream - Tutorial",
-              videoThumbnail: "https://via.placeholder.com/320x180/DC2626/FFFFFF?text=Tutorial+Video"
-            }
-          ];
-          
-          const selectedVideo = videoResponses[Math.floor(Math.random() * videoResponses.length)];
-          
-          agentMessage = {
-            type: 'video',
-            sender: 'agent',
-            session_id: sessionId,
-            content: selectedVideo.content,
-            timestamp: new Date().toISOString(),
-            videoUrl: selectedVideo.videoUrl,
-            videoTitle: selectedVideo.videoTitle,
-            videoThumbnail: selectedVideo.videoThumbnail,
-          };
-        } else if (shouldSendAudio) {
-          // Sample audio responses
-          const audioResponses = [
-            {
-              content: "Here's an audio explanation that might help:",
-              audioUrl: "https://www.soundjay.com/misc/sounds/bell-ringing-05.wav",
-              audioTitle: "Audio Explanation",
-              audioDuration: 3
-            },
-            {
-              content: "Listen to this audio message for more details:",
-              audioUrl: "https://www.soundjay.com/misc/sounds/bell-ringing-01.wav",
-              audioTitle: "Detailed Audio Response",
-              audioDuration: 2
-            },
-            {
-              content: "I've prepared an audio response for you:",
-              audioUrl: "https://www.soundjay.com/misc/sounds/bell-ringing-03.wav",
-              audioTitle: "Audio Message",
-              audioDuration: 4
-            }
-          ];
-          
-          const selectedAudio = audioResponses[Math.floor(Math.random() * audioResponses.length)];
-          
-          agentMessage = {
-            type: 'audio',
-            sender: 'agent',
-            session_id: sessionId,
-            content: selectedAudio.content,
-            timestamp: new Date().toISOString(),
-            audioUrl: selectedAudio.audioUrl,
-            audioTitle: selectedAudio.audioTitle,
-            audioDuration: selectedAudio.audioDuration,
-          };
-        } else {
-          // Regular text response
-          const textResponses = [
-            `I received your message: "${content}". How else can I help you?`,
-            `Thank you for your message. I've processed: "${content}". Do you need more information?`,
-            `I've received your inquiry about "${content}". Let me help you with that.`,
-            `Interesting point about "${content}". Would you like to dive deeper into any specific aspect?`,
-          ];
-          
-          agentMessage = {
-            type: 'message',
-            sender: 'agent',
-            session_id: sessionId,
-            content: textResponses[Math.floor(Math.random() * textResponses.length)],
-            timestamp: new Date().toISOString(),
-          };
-        }
-        
-        setMessages(prev => {
-          const newMessages = [...prev, agentMessage];
-          saveConversationMessages(sessionId, newMessages);
-          return newMessages;
-        });
-        optionsRef.current.onMessage?.(agentMessage);
-        setIsLoading(false);
-      }, 1000 + Math.random() * 2000);
-
-    } catch {
+      // Send message via WebSocket using sendtext action
+      console.log('[useChatSocket] Sending text message:', content);
+      const out = {
+        action: 'sendtext' as const,
+        payload: { message: content }
+      };
+      wsRef.current.sendJson(out);
+      
+      // Note: Response will arrive via WebSocket with messageType 'text'
+      // The handleIncoming function will process it and set isLoading to false
+    } catch (err) {
       const errorMessage = 'Error sending message';
       setError(errorMessage);
       optionsRef.current.onError?.(errorMessage);
       setIsLoading(false);
+      console.error('[useChatSocket] Error sending text message:', err);
     }
   }, [isConnected, sessionId]);
 
@@ -767,6 +669,28 @@ export const useChatSocket = (options: UseChatSocketOptions = {}) => {
       setError(errorMessage);
       optionsRef.current.onError?.(errorMessage);
       console.error('[useChatSocket] Error sending getrecipe:', err);
+    }
+  }, [isConnected]);
+
+  const startRecipe = useCallback((workflowId: string) => {
+    if (!isConnected || !wsRef.current) {
+      setError('No active connection');
+      console.warn('[useChatSocket] Cannot start recipe - WebSocket not connected');
+      return;
+    }
+
+    try {
+      console.log('[useChatSocket] Starting recipe for workflowId:', workflowId);
+      const out = {
+        action: 'startrecipe' as const,
+        payload: { workflowId }
+      };
+      wsRef.current.sendJson(out);
+    } catch (err) {
+      const errorMessage = 'Error starting recipe';
+      setError(errorMessage);
+      optionsRef.current.onError?.(errorMessage);
+      console.error('[useChatSocket] Error sending startrecipe:', err);
     }
   }, [isConnected]);
 
@@ -819,6 +743,7 @@ export const useChatSocket = (options: UseChatSocketOptions = {}) => {
     sendMessage,
     getRecipes,
     getRecipe,
+    startRecipe,
     taskDone,
     clearMessages,
   };

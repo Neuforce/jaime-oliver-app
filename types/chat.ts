@@ -160,7 +160,7 @@ export interface TaskDonePayload {
 
 export interface WebSocketMessage {
   type: 'message' | 'system' | 'status' | 'error' | 'response';
-  messageType?: 'recipes_list' | 'recipe_detail' | 'recipe_started' | 'task_done' | 'text_message' | 'text';
+  messageType?: 'recipes_list' | 'recipe_detail' | 'recipe_started' | 'task_done' | 'text_message' | 'text' | 'scheduled_task';
   payload?: RecipesListPayload | RecipeDetailPayload | TaskDonePayload | any;
   messageId?: string;
   metadata?: {

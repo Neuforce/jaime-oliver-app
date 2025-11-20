@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { createNewSession } from '../lib/session';
 import { useVoiceRecognition } from '../hooks/useVoiceRecognition';
+import { ENABLE_VOICE_INPUT } from '../config/features';
+import { StandardInput } from '../components/ui/StandardInput';
 
 const STARTER_QUESTIONS = [
   'I feel like pasta',
@@ -15,13 +16,13 @@ const STARTER_QUESTIONS = [
 
 export default function HomePage() {
   const router = useRouter();
-  const [input, setInput] = useState('');
+  
   const { startListening, isListening, isSupported } = useVoiceRecognition({
     language: 'en-US',
     continuous: true,
     interimResults: true,
     silenceTimeout: 2000, // Wait 2 seconds of silence before sending
-    autoStart: true, // Automatically start listening when page loads
+    autoStart: ENABLE_VOICE_INPUT, // Automatically start listening when page loads if enabled
     onResult: (text, isFinal) => {
       if (isFinal && text.trim()) {
         beginChat(text.trim());
@@ -100,37 +101,14 @@ export default function HomePage() {
         </div>
 
         <div className="fixed bottom-6 left-0 right-0">
-          <div className="mx-auto max-w-md px-4 flex items-center gap-3">
-            <div className="flex-1">
-              <input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask your question..."
-                className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:ring-2 focus:ring-green-300"
-              />
-            </div>
-            <button
-              onClick={() => beginChat(input || undefined)}
-              className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center"
-              aria-label="Send"
-            >
-              ➤
-            </button>
-            <button
-              onClick={() => startListening()}
-              className={`h-10 w-10 rounded-full ${isListening ? 'bg-teal-700' : 'bg-teal-600'} text-white flex items-center justify-center`}
-              aria-label="Voice"
-              title={isSupported ? (isListening ? 'Listening...' : 'Start listening') : 'Voice not supported'}
-            >
-              {/* Wave icon */}
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="4" y="8" width="2" height="8" rx="1" fill="white"/>
-                <rect x="8" y="6" width="2" height="12" rx="1" fill="white"/>
-                <rect x="12" y="4" width="2" height="16" rx="1" fill="white"/>
-                <rect x="16" y="6" width="2" height="12" rx="1" fill="white"/>
-                <rect x="20" y="8" width="2" height="8" rx="1" fill="white"/>
-              </svg>
-            </button>
+          <div className="mx-auto max-w-md px-4">
+            <StandardInput
+              onSend={(text) => beginChat(text || undefined)}
+              placeholder="Ask your question..."
+              enableVoiceInput={ENABLE_VOICE_INPUT}
+              onVoiceStart={ENABLE_VOICE_INPUT ? startListening : undefined}
+              isListening={isListening}
+            />
           </div>
         </div>
       </main>
