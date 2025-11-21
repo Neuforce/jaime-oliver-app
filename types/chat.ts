@@ -5,6 +5,7 @@ export interface RecipeStep {
   description?: string; // Short description from task.description
   detailedDescription?: string; // Full markdown description from task.metadata.detailedDescription
   taskId?: string; // Task ID from backend for taskdone action
+  status?: 'coming' | 'active' | 'done'; // Status for visual tracking
 }
 
 export interface Ingredient {
@@ -77,7 +78,7 @@ export interface RecipeTask {
     detailedDescription?: string;
     cookingTime?: string;
     timerDuration?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   description: string;
   timerDuration?: string;
@@ -98,7 +99,7 @@ export interface RecipeDefinition {
     equipmentNeeded?: string[];
     ingredientsList?: string[];
     vegetarianOption?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -134,7 +135,7 @@ export interface NextTask {
     technique?: string;
     cookingTime?: string;
     detailedDescription?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   next?: string[];
   description: string;
@@ -160,8 +161,8 @@ export interface TaskDonePayload {
 
 export interface WebSocketMessage {
   type: 'message' | 'system' | 'status' | 'error' | 'response';
-  messageType?: 'recipes_list' | 'recipe_detail' | 'recipe_started' | 'task_done' | 'text_message' | 'text' | 'scheduled_task';
-  payload?: RecipesListPayload | RecipeDetailPayload | TaskDonePayload | any;
+  messageType?: 'recipes_list' | 'recipe_detail' | 'recipe_started' | 'task_done' | 'text_message' | 'text' | 'scheduled_task' | 'workflow_started' | 'workflow_finished' | 'next_task' | 'timed_task' | 'timer_done';
+  payload?: RecipesListPayload | RecipeDetailPayload | TaskDonePayload | Record<string, unknown>;
   messageId?: string;
   metadata?: {
     timestamp?: string;

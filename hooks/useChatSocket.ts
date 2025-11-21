@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { ChatMessage, WebSocketMessage, RecipeItem, RecipeWorkflow, RecipeDetail, RecipeTask, RecipeDefinition, TaskDonePayload, NextTask } from '../types/chat';
+import { ChatMessage, WebSocketMessage, RecipeItem, RecipeWorkflow, RecipeDetail, RecipeTask, TaskDonePayload } from '../types/chat';
 import { saveConversation, saveConversationMessages } from '../lib/conversationHistory';
 import { WsClient } from '../lib/wsClient';
 import { useSessionId } from './useSessionId';
@@ -42,7 +42,7 @@ const transformRecipeDetailToRecipeItem = (recipeDetail: RecipeDetail): RecipeIt
   const steps = definition?.tasks?.map((task: RecipeTask) => ({
     title: task.name,
     duration: task.metadata?.cookingTime || task.timerDuration || task.metadata?.timerDuration || '',
-    icon: getStepImage(task.name, task.description, task.metadata?.imageUrl), // Auto-generate image based on step action
+    icon: getStepImage(task.name, task.description, typeof task.metadata?.imageUrl === 'string' ? task.metadata.imageUrl : undefined), // Auto-generate image based on step action
     description: task.description, // Short description
     detailedDescription: task.metadata?.detailedDescription, // Full markdown description
     taskId: task.taskId, // Store taskId for taskdone action
@@ -107,6 +107,7 @@ interface UseChatSocketOptions {
   onError?: (error: string) => void;
   onConnect?: () => void;
   onDisconnect?: () => void;
+  onNextTaskActivated?: (taskId: string) => void; // Callback when next_task arrives
   initialSessionId?: string;
   initialMessages?: ChatMessage[];
 }
@@ -123,7 +124,7 @@ export const useChatSocket = (options: UseChatSocketOptions = {}) => {
   
   const wsRef = useRef<WsClient | null>(null);
   // Refs to store latest versions of callbacks without causing re-renders
-  const handleIncomingRef = useRef<((data: any) => void) | null>(null);
+  const handleIncomingRef = useRef<((data: WebSocketMessage) => void) | null>(null);
   const optionsRef = useRef(options);
   
   // Update options ref whenever options change
@@ -149,7 +150,7 @@ export const useChatSocket = (options: UseChatSocketOptions = {}) => {
 
   // Handle incoming messages from WebSocket
   const handleIncoming = useCallback(
-    (data: any) => {
+    (data: WebSocketMessage) => {
       console.log('[useChatSocket] Processing message:', data?.type, data?.messageType);
       try {
         // WsClient emits messages as strings, so we need to parse them
@@ -263,7 +264,7 @@ export const useChatSocket = (options: UseChatSocketOptions = {}) => {
             status: 'success' | 'error';
             requestId: string;
             workflowId: string;
-            data?: any;
+            data?: Record<string, unknown>;
             error?: string;
           };
           const timestamp = message.metadata?.timestamp || new Date().toISOString();
@@ -271,11 +272,32 @@ export const useChatSocket = (options: UseChatSocketOptions = {}) => {
           if (payload.status === 'success') {
             console.log('[useChatSocket] Recipe started successfully:', payload.workflowId, payload.data);
 
-            // Don't show a message for successful recipe start - the UI already handles this
-            // Just log the data for debugging
-            if (payload.data) {
-              console.log('[useChatSocket] Recipe session data:', payload.data);
-            }
+            // Update the recipe to mark the first step as active
+            setMessages(prev => {
+              const newMessages = prev.map(msg => {
+                if (msg.type === 'recipeList' && msg.recipes) {
+                  const updatedRecipes = msg.recipes.map(recipe => {
+                    const recipeWithId = recipe as RecipeItem & { workflowId?: string };
+                    // Find the recipe that matches this workflowId
+                    if (recipeWithId.workflowId === payload.workflowId && recipe.steps && recipe.steps.length > 0) {
+                      // Mark first step as active, rest as coming
+                      const updatedSteps = recipe.steps.map((step, idx) => ({
+                        ...step,
+                        status: (idx === 0 ? 'active' : 'coming') as 'coming' | 'active' | 'done',
+                      }));
+                      return { ...recipe, steps: updatedSteps };
+                    }
+                    return recipe;
+                  });
+                  return { ...msg, recipes: updatedRecipes };
+                }
+                return msg;
+              });
+              saveConversationMessages(sessionId, newMessages);
+              return newMessages;
+            });
+
+            console.log('[useChatSocket] First step marked as active for workflowId:', payload.workflowId);
           } else if (payload.status === 'error') {
             const errorMessage: ChatMessage = {
               type: 'status',
@@ -355,18 +377,18 @@ export const useChatSocket = (options: UseChatSocketOptions = {}) => {
           // Create a rich message with the scheduled task information
           const taskMessage: ChatMessage = {
             type: 'message',
-            sender: 'system',
-            session_id: sessionId,
+              sender: 'system',
+              session_id: sessionId,
             content: `⏰ **${payload.name}**\n\n${payload.metadata?.detailedDescription || payload.description || 'Time to check on your cooking!'}`,
-            timestamp,
-          };
+              timestamp,
+            };
 
           // Add message to state
-          setMessages(prev => {
+            setMessages(prev => {
             const newMessages = [...prev, taskMessage];
-            saveConversationMessages(sessionId, newMessages);
-            return newMessages;
-          });
+              saveConversationMessages(sessionId, newMessages);
+              return newMessages;
+            });
 
           // Call the onMessage callback
           optionsRef.current.onMessage?.(taskMessage);
@@ -384,6 +406,150 @@ export const useChatSocket = (options: UseChatSocketOptions = {}) => {
           return;
         }
 
+        // Handle workflow_started message from backend
+        if (message.type === 'response' && message.messageType === 'workflow_started' && message.payload) {
+          const payload = message.payload as {
+            event: string;
+            workflowId: string | null;
+            workflowName: string | null;
+            recipeId: string | null;
+            recipeName: string | null;
+            startedAt: string | null;
+            data: {
+              name: string;
+              slug: string;
+              tags: string[];
+              tasks: RecipeTask[];
+              version: string;
+              category: string;
+              metadata?: {
+                estimatedTime?: string;
+                ingredientsList?: string[];
+                equipmentNeeded?: string[];
+                [key: string]: unknown;
+              };
+              endTaskId: string;
+              description: string;
+              dispatchUrl: string;
+              startTaskId: string;
+            };
+          };
+          const timestamp = message.metadata?.timestamp || new Date().toISOString();
+
+          console.log('[useChatSocket] Workflow started:', payload.data.name, 'Tasks:', payload.data.tasks.length);
+
+          // Transform tasks to steps with status tracking
+          const steps = payload.data.tasks.map((task: RecipeTask, index: number) => ({
+            title: task.name,
+            duration: task.metadata?.cookingTime || task.timerDuration || task.metadata?.timerDuration || '',
+            icon: getStepImage(task.name, task.description, typeof task.metadata?.imageUrl === 'string' ? task.metadata.imageUrl : undefined),
+            description: task.description,
+            detailedDescription: task.metadata?.detailedDescription,
+            taskId: task.taskId,
+            status: (index === 0 ? 'active' : 'coming') as 'coming' | 'active' | 'done', // First step is active, rest are coming
+          }));
+
+          // Create recipe item from workflow data
+          const recipeItem: RecipeItem & { workflowId?: string } = {
+            title: payload.data.name,
+            duration: payload.data.metadata?.estimatedTime || '',
+            imageUrl: getDefaultRecipeImage(payload.data.name),
+            introText: payload.data.description,
+            ingredients: payload.data.metadata?.ingredientsList?.map((ingredient: string) => ({
+              name: ingredient,
+              quantity: '',
+              imageUrl: getIngredientImage(ingredient),
+            })) || [],
+            utensils: payload.data.metadata?.equipmentNeeded?.map((equipment: string) => ({
+              name: equipment,
+              imageUrl: getUtensilImage(equipment),
+            })) || [],
+            steps,
+            workflowId: payload.workflowId || undefined,
+          };
+
+          // Create a recipeList message with the started workflow
+          const recipeListMessage: ChatMessage = {
+            type: 'recipeList',
+            sender: 'agent',
+            session_id: sessionId,
+            content: `Recipe workflow started: ${payload.data.name}`,
+            timestamp,
+            recipes: [recipeItem],
+          };
+
+          // Add to messages
+          setMessages(prev => {
+            const newMessages = [...prev, recipeListMessage];
+            saveConversationMessages(sessionId, newMessages);
+            return newMessages;
+          });
+
+          // Call the onMessage callback
+          optionsRef.current.onMessage?.(recipeListMessage);
+
+          console.log('[useChatSocket] Workflow started with', steps.length, 'steps, first step is active');
+          return;
+        }
+
+        // Handle workflow_finished message from backend
+        if (message.type === 'response' && message.messageType === 'workflow_finished' && message.payload) {
+          const payload = message.payload as {
+            event: string;
+            workflowId: string | null;
+            workflowName: string | null;
+            finishedAt: string | null;
+            status: string | null;
+            summary: string | null;
+            data: Record<string, unknown>;
+          };
+          const timestamp = message.metadata?.timestamp || new Date().toISOString();
+
+          console.log('[useChatSocket] Workflow finished:', payload.workflowName || payload.workflowId);
+
+          // Find and update the recipe to mark all steps as done
+          setMessages(prev => {
+            const newMessages = prev.map(msg => {
+              if (msg.type === 'recipeList' && msg.recipes) {
+                const updatedRecipes = msg.recipes.map(recipe => {
+                  if (recipe.steps) {
+                    // Mark all steps as done
+                    const updatedSteps = recipe.steps.map(step => ({
+                      ...step,
+                      status: 'done' as const,
+                    }));
+                    return { ...recipe, steps: updatedSteps };
+                  }
+                  return recipe;
+                });
+                return { ...msg, recipes: updatedRecipes };
+              }
+              return msg;
+            });
+            saveConversationMessages(sessionId, newMessages);
+            return newMessages;
+          });
+
+          // Add a completion message
+          const completionMessage: ChatMessage = {
+              type: 'status',
+              sender: 'system',
+              session_id: sessionId,
+            content: '🎉 Recipe completed! All steps are done.',
+              timestamp,
+            };
+
+            setMessages(prev => {
+            const newMessages = [...prev, completionMessage];
+              saveConversationMessages(sessionId, newMessages);
+              return newMessages;
+            });
+
+          optionsRef.current.onMessage?.(completionMessage);
+          console.log('[useChatSocket] All steps marked as done');
+          return;
+        }
+
         // Handle task_done message from backend
         if (message.type === 'response' && message.messageType === 'task_done' && message.payload) {
           const payload = message.payload as TaskDonePayload;
@@ -392,30 +558,43 @@ export const useChatSocket = (options: UseChatSocketOptions = {}) => {
           if (payload.data && payload.status === 'success') {
             console.log('[useChatSocket] Task completed:', payload.taskId, 'Next tasks:', payload.data.nextTasks?.length || 0);
 
-            // Create a status message about the task completion
-            const statusMessage: ChatMessage = {
-              type: 'status',
-              sender: 'system',
-              session_id: sessionId,
-              content: `Task "${payload.data.nextTasks?.[0]?.name || payload.taskId}" completed. ${payload.data.nextTasks?.length ? `Next: ${payload.data.nextTasks.map(t => t.name).join(', ')}` : 'Recipe completed!'}`,
-              timestamp,
-            };
-
-            // Add status message to state
+            // Update the recipe step status to 'done' and activate next step
             setMessages(prev => {
-              const newMessages = [...prev, statusMessage];
+              const newMessages = prev.map(msg => {
+                if (msg.type === 'recipeList' && msg.recipes) {
+                  const updatedRecipes = msg.recipes.map(recipe => {
+                    if (recipe.steps) {
+                      // Find current step index
+                      const currentStepIndex = recipe.steps.findIndex(step => step.taskId === payload.taskId);
+                      
+                      // Update steps: mark current as done, next as active
+                      const updatedSteps = recipe.steps.map((step, idx) => {
+                        if (step.taskId === payload.taskId) {
+                          // Mark completed step as done
+                          return { ...step, status: 'done' as const };
+                        } else if (idx === currentStepIndex + 1) {
+                          // Activate next step automatically
+                          return { ...step, status: 'active' as const };
+                        }
+                        return step;
+                      });
+                      return { ...recipe, steps: updatedSteps };
+                    }
+                    return recipe;
+                  });
+                  return { ...msg, recipes: updatedRecipes };
+                }
+                return msg;
+              });
               saveConversationMessages(sessionId, newMessages);
               return newMessages;
             });
 
-            // Call the onMessage callback
-            optionsRef.current.onMessage?.(statusMessage);
-
-            // If there are next tasks, we could update the recipe steps or show them
-            // This depends on how you want to handle the next tasks in the UI
+            console.log('[useChatSocket] Step marked as done:', payload.taskId);
+            
+            // Log next tasks
             if (payload.data.nextTasks && payload.data.nextTasks.length > 0) {
-              console.log('[useChatSocket] Next tasks available:', payload.data.nextTasks);
-              // You might want to update the recipe steps here or trigger navigation to next step
+              console.log('[useChatSocket] Next step automatically activated:', payload.data.nextTasks[0]?.name);
             }
           } else if (payload.status === 'error') {
             const errorMessage: ChatMessage = {
@@ -432,6 +611,127 @@ export const useChatSocket = (options: UseChatSocketOptions = {}) => {
             });
             optionsRef.current.onError?.(`Failed to complete task: ${payload.taskId}`);
           }
+          return;
+        }
+
+        // Handle next_task message from backend
+        if (message.type === 'response' && message.messageType === 'next_task' && message.payload) {
+          const payload = message.payload as {
+            event: string;
+            taskId: string;
+            taskName: string | null;
+            taskDescription: string | null;
+            taskType: string | null;
+            workflowId: string | null;
+            stepNumber: number | null;
+            totalSteps: number | null;
+            data: RecipeTask;
+          };
+
+          console.log('[useChatSocket] Next task activated:', payload.taskId, payload.data?.name);
+
+          // Update the recipe step status to 'active'
+          setMessages(prev => {
+            const newMessages = prev.map(msg => {
+              if (msg.type === 'recipeList' && msg.recipes) {
+                const updatedRecipes = msg.recipes.map(recipe => {
+                  if (recipe.steps) {
+                    // Find and mark the next step as active
+                    const updatedSteps = recipe.steps.map(step => {
+                      if (step.taskId === payload.taskId) {
+                        return { ...step, status: 'active' as const };
+                      }
+                      return step;
+                    });
+                    return { ...recipe, steps: updatedSteps };
+                  }
+                  return recipe;
+                });
+                return { ...msg, recipes: updatedRecipes };
+              }
+              return msg;
+            });
+            saveConversationMessages(sessionId, newMessages);
+            return newMessages;
+          });
+
+          console.log('[useChatSocket] Step marked as active:', payload.taskId);
+          
+          // Trigger auto-navigation callback for next_task
+          if (optionsRef.current.onNextTaskActivated) {
+            console.log('[useChatSocket] Triggering auto-navigation for next_task:', payload.taskId);
+            optionsRef.current.onNextTaskActivated(payload.taskId);
+          }
+          
+          return;
+        }
+
+        // Handle timed_task message from backend
+        if (message.type === 'response' && message.messageType === 'timed_task' && message.payload) {
+          const payload = message.payload as {
+            event: string;
+            taskId: string;
+            taskName: string | null;
+            taskDescription: string | null;
+            workflowId: string | null;
+            duration: string | null;
+            durationUnit: string | null;
+            startedAt: string | null;
+            data: RecipeTask & {
+              activated_at_utc?: string;
+            };
+          };
+          const timestamp = message.metadata?.timestamp || new Date().toISOString();
+
+          console.log('[useChatSocket] Timed task started:', payload.taskId, payload.data?.name, 'Duration:', payload.data?.timerDuration);
+
+          // Keep step in 'coming' state but this signals a timer has started
+          // The UI will handle the countdown timer display
+          // Note: The step should already be in 'coming' state from workflow_started
+          console.log('[useChatSocket] Timer activated for task:', payload.taskId, 'at', payload.data?.activated_at_utc || timestamp);
+          return;
+        }
+
+        // Handle timer_done message from backend
+        if (message.type === 'response' && message.messageType === 'timer_done' && message.payload) {
+          const payload = message.payload as {
+            event: string;
+            taskId: string;
+            taskName: string | null;
+            workflowId: string | null;
+            completedAt: string | null;
+            elapsedTime: string | null;
+            data: RecipeTask;
+          };
+
+          console.log('[useChatSocket] Timer done for task:', payload.taskId, payload.data?.name);
+
+          // Update the recipe step status from 'coming' to 'active'
+          setMessages(prev => {
+            const newMessages = prev.map(msg => {
+              if (msg.type === 'recipeList' && msg.recipes) {
+                const updatedRecipes = msg.recipes.map(recipe => {
+                  if (recipe.steps) {
+                    // Find and mark the timed step as active (countdown is done)
+                    const updatedSteps = recipe.steps.map(step => {
+                      if (step.taskId === payload.taskId) {
+                        return { ...step, status: 'active' as const };
+                      }
+                      return step;
+                    });
+                    return { ...recipe, steps: updatedSteps };
+                  }
+                  return recipe;
+                });
+                return { ...msg, recipes: updatedRecipes };
+              }
+              return msg;
+            });
+            saveConversationMessages(sessionId, newMessages);
+            return newMessages;
+          });
+
+          console.log('[useChatSocket] Step transitioned from coming to active:', payload.taskId);
           return;
         }
 

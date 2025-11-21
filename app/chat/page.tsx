@@ -36,6 +36,7 @@ function ChatPageContent() {
   
   const [initialMessages, setInitialMessages] = useState<ChatMessage[]>([]);
   const [hasRequestedRecipes, setHasRequestedRecipes] = useState(false);
+  const [autoNavigateToTaskId, setAutoNavigateToTaskId] = useState<string | null>(null);
   
   const {
     messages,
@@ -59,6 +60,10 @@ function ChatPageContent() {
     },
     onError: (error) => {
       console.error('[ChatPage] Chat error:', error);
+    },
+    onNextTaskActivated: (taskId: string) => {
+      console.log('[ChatPage] Received next_task, auto-navigating to:', taskId);
+      setAutoNavigateToTaskId(taskId);
     },
   });
 
@@ -157,6 +162,8 @@ function ChatPageContent() {
           getRecipe={getRecipe}
           startRecipe={startRecipe}
           taskDone={taskDone}
+          autoNavigateToTaskId={autoNavigateToTaskId}
+          onAutoNavigateComplete={() => setAutoNavigateToTaskId(null)}
         />
       </div>
       </div>

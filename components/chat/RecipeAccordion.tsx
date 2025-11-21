@@ -13,6 +13,8 @@ interface RecipeAccordionProps {
   startRecipe?: (workflowId: string) => void;
   taskDone?: (taskId: string) => void;
   contextualMessages?: ChatMessage[]; // Messages to show contextually (text, scheduled_task)
+  autoNavigateToTaskId?: string | null; // TaskId to auto-navigate to when next_task arrives
+  onAutoNavigateComplete?: () => void;
 }
 
 // Simple function to convert markdown bold to HTML
@@ -228,7 +230,9 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({
   getRecipe, 
   startRecipe, 
   taskDone,
-  contextualMessages = []
+  contextualMessages = [],
+  autoNavigateToTaskId,
+  onAutoNavigateComplete
 }) => {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [videoModalOpen, setVideoModalOpen] = useState<boolean>(false);
@@ -245,6 +249,26 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({
   const [stepVideoModalOpen, setStepVideoModalOpen] = useState<boolean>(false);
   const [feedbackModalOpen, setFeedbackModalOpen] = useState<boolean>(false);
   const [feedbackText, setFeedbackText] = useState<string>('');
+
+  // Auto-navigate when next_task arrives from websocket
+  useEffect(() => {
+    if (!autoNavigateToTaskId || currentRecipeIndex === null || !recipes[currentRecipeIndex]?.steps) {
+      return;
+    }
+
+    const steps = recipes[currentRecipeIndex].steps!;
+    const stepIndex = steps.findIndex(step => step.taskId === autoNavigateToTaskId);
+    
+    if (stepIndex !== -1) {
+      console.log('[RecipeAccordion] Auto-navigating to task from next_task:', autoNavigateToTaskId, 'at index:', stepIndex);
+      setCurrentStepIndex(stepIndex);
+      
+      // Notify parent that navigation is complete
+      if (onAutoNavigateComplete) {
+        onAutoNavigateComplete();
+      }
+    }
+  }, [autoNavigateToTaskId, currentRecipeIndex, recipes, onAutoNavigateComplete]);
 
   const handleRecipeClick = (index: number) => {
     const newExpandedIndex = expandedIndex === index ? null : index;
@@ -384,6 +408,10 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({
       const firstStep = recipes[recipeIdx].steps![0];
       setTimerSeconds(parseDurationToSeconds(firstStep.duration));
       setUtensilsModalOpen(false);
+      
+      // Note: The first step's status will be set to 'active' by the workflow_started 
+      // event from the backend, or if the recipe already has steps with status,
+      // the first step should already be 'active' from when the recipe was loaded
     }
   };
 
@@ -407,7 +435,21 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({
 
   const handleNextStepClick = () => {
     if (currentRecipeIndex !== null && recipes[currentRecipeIndex]?.steps) {
+      const currentStep = recipes[currentRecipeIndex].steps![currentStepIndex];
       const isLastStep = currentStepIndex === recipes[currentRecipeIndex].steps!.length - 1;
+      
+      // If step is already done, just navigate without confirmation
+      if (currentStep.status === 'done') {
+        if (!isLastStep) {
+          setCurrentStepIndex(currentStepIndex + 1);
+          const nextStep = recipes[currentRecipeIndex].steps![currentStepIndex + 1];
+          setTimerSeconds(parseDurationToSeconds(nextStep.duration));
+          setIsTimerRunning(false);
+        }
+        return;
+      }
+      
+      // If step is active, show confirmation modal
       if (isLastStep) {
         // Show feedback modal on last step
         setFeedbackModalOpen(true);
@@ -606,35 +648,42 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({
 
           {/* Navigation Buttons */}
           <div className="flex gap-3 pt-4">
-            <button
-              onClick={handlePreviousStep}
-              className="flex-1 px-4 py-3 bg-gray-100 text-[#327179] rounded-lg font-medium flex items-center justify-center gap-2"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              Previous
-            </button>
-            <button
-              onClick={handleNextStepClick}
-              className="flex-1 px-4 py-3 bg-[#327179] text-white rounded-lg font-medium flex items-center justify-center gap-2"
-            >
-              {currentStepIndex === totalSteps - 1 ? (
-                <>
-                  Finish
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </>
-              ) : (
-                <>
-                  Next
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </>
-              )}
-            </button>
+            {/* Only show Previous button if NOT on first step */}
+            {currentStepIndex > 0 && (
+              <button
+                onClick={handlePreviousStep}
+                className="flex-1 px-4 py-3 bg-gray-100 text-[#327179] rounded-lg font-medium flex items-center justify-center gap-2"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                Previous
+              </button>
+            )}
+            {/* Show Next/Finish button for active and done steps (not coming) */}
+            {(currentStep.status === 'active' || currentStep.status === 'done') && currentStepIndex < totalSteps - 1 && (
+              <button
+                onClick={handleNextStepClick}
+                className="flex-1 px-4 py-3 bg-[#327179] text-white rounded-lg font-medium flex items-center justify-center gap-2"
+              >
+                Next
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            )}
+            {/* Show Finish button on last step if active */}
+            {currentStep.status === 'active' && currentStepIndex === totalSteps - 1 && (
+              <button
+                onClick={handleNextStepClick}
+                className="flex-1 px-4 py-3 bg-[#327179] text-white rounded-lg font-medium flex items-center justify-center gap-2"
+              >
+                Finish
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            )}
           </div>
         </div>
 
@@ -915,7 +964,14 @@ export const RecipeAccordion: React.FC<RecipeAccordionProps> = ({
                     {recipe.steps && recipe.steps.length > 0 && (
                       <div className="space-y-3">
                         {recipe.steps.map((step, stepIdx) => (
-                          <div key={stepIdx} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                          <div key={stepIdx} className="relative flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                            {/* Status indicator bar */}
+                            <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-lg ${
+                              step.status === 'done' ? 'bg-green-600' :
+                              step.status === 'active' ? 'bg-blue-600 animate-pulse-soft' :
+                              'bg-gray-400'
+                            }`} />
+                            
                             <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-white border border-gray-200 overflow-hidden">
                               {step.icon ? (
                                 <Image

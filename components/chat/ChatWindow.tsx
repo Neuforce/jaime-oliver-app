@@ -12,6 +12,8 @@ interface ChatWindowProps {
   getRecipe?: (workflowId: string) => void;
   startRecipe?: (workflowId: string) => void;
   taskDone?: (taskId: string) => void;
+  autoNavigateToTaskId?: string | null;
+  onAutoNavigateComplete?: () => void;
 }
 
 export const ChatWindow: React.FC<ChatWindowProps> = ({
@@ -21,6 +23,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   getRecipe,
   startRecipe,
   taskDone,
+  autoNavigateToTaskId,
+  onAutoNavigateComplete,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [showVoiceInstructions, setShowVoiceInstructions] = useState(false);
@@ -85,6 +89,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                   startRecipe={startRecipe}
                   taskDone={taskDone}
                   contextualMessages={contextualMessages}
+                  autoNavigateToTaskId={autoNavigateToTaskId}
+                  onAutoNavigateComplete={onAutoNavigateComplete}
                 />
                 {/* Separator between recipe section and conversation */}
                 {showSeparator && (

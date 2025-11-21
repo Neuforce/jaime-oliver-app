@@ -771,21 +771,478 @@ interface TaskDonePayload {
 
 ---
 
-## 6. RESUMEN RÁPIDO
+## 5. WORKFLOW ENGINE MESSAGE TYPES (Nuevos)
 
-| Acción (Frontend → Backend) | MessageType (Backend → Frontend) | Propósito |
-|----------------------------|----------------------------------|-----------|
-| `sendtext` | `text` | Enviar mensaje de texto genérico |
-| `getrecipes` | `recipes_list` | Obtener lista de recetas |
-| `getrecipe` | `recipe_detail` | Obtener detalles de una receta |
-| `startrecipe` | `recipe_started` | Iniciar sesión de cocina |
-| `taskdone` | `task_done` | Marcar paso completado |
-| - | `scheduled_task` | Timer automático cumplido (sin acción) |
-| - | `message` (legacy) | Mensajes genéricos |
+Estos messageTypes son enviados por el Workflow Engine para controlar el flujo de la receta en tiempo real. Cada evento actualiza el estado visual de los steps (coming → active → done).
+
+### 5.1 `workflow_started`
+**Ubicación:** `useChatSocket.ts` líneas 408-492
+
+**Cuándo llega:** El backend envía el workflow completo con todas las tareas cuando se inicia una receta.
+
+**Formato del mensaje:**
+```json
+{
+  "type": "response",
+  "messageType": "workflow_started",
+  "payload": {
+    "event": "workflow_started",
+    "workflowId": "wf_12345",
+    "workflowName": "Tomato & Mussel Pasta",
+    "recipeId": "recipe_001",
+    "recipeName": "Tomato & Mussel Pasta",
+    "startedAt": "2025-11-21T10:00:00Z",
+    "data": {
+      "name": "Tomato & Mussel Pasta",
+      "slug": "tomato-mussel-pasta",
+      "tags": ["Italian", "Pasta", "Seafood"],
+      "tasks": [
+        {
+          "taskId": "task_001",
+          "name": "Prepare All Vegetables",
+          "type": "immediate",
+          "description": "Chop garlic, celery...",
+          "metadata": {
+            "category": "preparation",
+            "priority": "high",
+            "cookingTime": "5 minutes",
+            "detailedDescription": "# Prepare All Vegetables..."
+          },
+          "next": ["task_002"]
+        }
+        // ... más tasks
+      ],
+      "metadata": {
+        "estimatedTime": "20 minutes",
+        "ingredientsList": ["garlic", "pasta", "mussels"],
+        "equipmentNeeded": ["knife", "pot", "pan"]
+      },
+      "description": "A quick 20-minute Italian seafood pasta",
+      "startTaskId": "task_001",
+      "endTaskId": "task_008"
+    }
+  },
+  "metadata": {
+    "source": "workflow-engine",
+    "eventType": "workflow_started",
+    "timestamp": "2025-11-21T10:00:00Z"
+  }
+}
+```
+
+**Qué hace:**
+1. Transforma todas las `tasks` del backend a `steps` del frontend
+2. Marca el **primer step** como `'active'` (azul pulsante)
+3. Marca todos los **demás steps** como `'coming'` (gris)
+4. Crea un recipeItem completo con ingredientes, utensilios y steps
+5. Agrega la receta al estado como mensaje de tipo `'recipeList'`
+
+**Resultado visual:**
+- 🔵 Step 1: Active (barra azul pulsante)
+- ⚪ Steps 2-N: Coming (barra gris)
 
 ---
 
-## 7. VALIDACIONES Y ERRORES
+### 5.2 `workflow_finished`
+**Ubicación:** `useChatSocket.ts` líneas 494-550
+
+**Cuándo llega:** Cuando el usuario completa el último paso de la receta.
+
+**Formato del mensaje:**
+```json
+{
+  "type": "response",
+  "messageType": "workflow_finished",
+  "payload": {
+    "event": "workflow_finished",
+    "workflowId": "wf_12345",
+    "workflowName": "Tomato & Mussel Pasta",
+    "finishedAt": "2025-11-21T10:25:00Z",
+    "status": "completed",
+    "summary": "Recipe completed successfully"
+  },
+  "metadata": {
+    "source": "workflow-engine",
+    "eventType": "workflow_finished",
+    "timestamp": "2025-11-21T10:25:00Z"
+  }
+}
+```
+
+**Qué hace:**
+1. Encuentra la receta en el estado
+2. Marca **TODOS** los steps como `'done'` (verde)
+3. Agrega mensaje de sistema: "🎉 Recipe completed! All steps are done."
+
+**Resultado visual:**
+- ✅ Todos los steps: Done (barra verde)
+- 🎉 Mensaje de completitud
+
+---
+
+### 5.3 `task_done` (Mejorado)
+**Ubicación:** `useChatSocket.ts` líneas 552-614
+
+**Cuándo llega:** Cuando el usuario completa una tarea (hablando/escribiendo al agente, o presionando "Next").
+
+**Formato del mensaje:**
+```json
+{
+  "type": "response",
+  "messageType": "task_done",
+  "payload": {
+    "event": "task_done",
+    "taskId": "task_003",
+    "taskName": "Start the Sauce",
+    "workflowId": "wf_12345",
+    "completedAt": "2025-11-21T10:15:00Z",
+    "status": "success",
+    "data": {
+      "name": "Start the Sauce",
+      "taskId": "task_003",
+      "type": "immediate",
+      "next": ["task_005"],
+      "description": "Sauté vegetables...",
+      "metadata": {
+        "category": "cooking",
+        "priority": "high"
+      }
+    }
+  },
+  "metadata": {
+    "source": "workflow-engine",
+    "eventType": "task_done",
+    "timestamp": "2025-11-21T10:15:00Z"
+  }
+}
+```
+
+**Qué hace:**
+1. Encuentra el step con `taskId` del payload
+2. Marca ese step como `'done'` (verde)
+3. **AUTOMÁTICAMENTE** marca el siguiente step como `'active'` (azul)
+4. La UI detecta el cambio y **auto-navega** al nuevo step activo
+
+**Resultado visual:**
+- ✅ Step completado: Done (barra verde)
+- 🔵 Siguiente step: Active (barra azul pulsante)
+- 🎯 Auto-navegación al step activo
+- **Usuario NO necesita presionar "Next"**
+
+---
+
+### 5.4 `next_task`
+**Ubicación:** `useChatSocket.ts` líneas 616-659
+
+**Cuándo llega:** El backend activa explícitamente el siguiente paso en el flujo.
+
+**Formato del mensaje:**
+```json
+{
+  "type": "response",
+  "messageType": "next_task",
+  "payload": {
+    "event": "next_task",
+    "taskId": "task_005",
+    "taskName": "Add Mussels and Cook",
+    "taskDescription": "Add mussels, cover, and cook...",
+    "taskType": "immediate",
+    "workflowId": "wf_12345",
+    "stepNumber": 5,
+    "totalSteps": 8,
+    "data": {
+      "taskId": "task_005",
+      "type": "immediate",
+      "name": "Add Mussels and Cook",
+      "metadata": {
+        "category": "cooking",
+        "priority": "high",
+        "technique": "covered cooking",
+        "cookingTime": "5 minutes"
+      },
+      "next": ["task_006", "task_007"],
+      "description": "Add mussels, cover...",
+      "dependsOn": ["task_004", "task_003"]
+    }
+  },
+  "metadata": {
+    "source": "workflow-engine",
+    "eventType": "next_task",
+    "timestamp": "2025-11-21T10:16:00Z"
+  }
+}
+```
+
+**Qué hace:**
+1. Encuentra el step con el `taskId` del payload
+2. Marca ese step como `'active'` (azul)
+3. La UI detecta el cambio y auto-navega al step
+
+**Resultado visual:**
+- 🔵 Step indicado: Active (barra azul pulsante)
+- 🎯 Auto-navegación
+
+---
+
+### 5.5 `timed_task`
+**Ubicación:** `useChatSocket.ts` líneas 661-685
+
+**Cuándo llega:** El backend inicia un timer para una tarea específica.
+
+**Formato del mensaje:**
+```json
+{
+  "type": "response",
+  "messageType": "timed_task",
+  "payload": {
+    "event": "timed_task",
+    "taskId": "task_006",
+    "taskName": "Check Mussels",
+    "taskDescription": "Timer for mussel cooking...",
+    "workflowId": "wf_12345",
+    "duration": "1",
+    "durationUnit": "minutes",
+    "startedAt": "2025-11-21T10:17:00Z",
+    "data": {
+      "taskId": "task_006",
+      "type": "timed",
+      "name": "Check Mussels",
+      "metadata": {
+        "category": "cooking",
+        "priority": "high",
+        "checkPoints": [
+          "Mussels are heated through",
+          "Sauce is aromatic and steamy"
+        ]
+      },
+      "next": ["task_008"],
+      "description": "Timer for mussel cooking...",
+      "timerDuration": "PT1M",
+      "activated_at_utc": "2025-11-21T10:17:00.000Z"
+    }
+  },
+  "metadata": {
+    "source": "workflow-engine",
+    "eventType": "timed_task",
+    "timestamp": "2025-11-21T10:17:00Z"
+  }
+}
+```
+
+**Qué hace:**
+1. Solo logea la información del timer
+2. El step permanece en estado `'coming'` (gris)
+3. La UI puede mostrar un countdown timer si lo desea
+
+**Resultado visual:**
+- ⚪ Step: Coming (barra gris)
+- ⏱️ Countdown timer activo (opcional en UI)
+
+**Nota:** El step NO se activa hasta que llegue `timer_done`.
+
+---
+
+### 5.6 `timer_done`
+**Ubicación:** `useChatSocket.ts` líneas 687-726
+
+**Cuándo llega:** Cuando el countdown timer de una tarea termina.
+
+**Formato del mensaje:**
+```json
+{
+  "type": "response",
+  "messageType": "timer_done",
+  "payload": {
+    "event": "timer_done",
+    "taskId": "task_006",
+    "taskName": "Check Mussels",
+    "workflowId": "wf_12345",
+    "completedAt": "2025-11-21T10:18:00Z",
+    "elapsedTime": "60",
+    "data": {
+      "taskId": "task_006",
+      "type": "timed",
+      "name": "Check Mussels",
+      "metadata": {
+        "category": "cooking",
+        "priority": "high",
+        "checkPoints": [
+          "Mussels are heated through",
+          "Sauce is aromatic and steamy"
+        ]
+      },
+      "next": ["task_008"],
+      "description": "Timer for mussel cooking...",
+      "timerDuration": "PT1M"
+    }
+  },
+  "metadata": {
+    "source": "workflow-engine",
+    "eventType": "timer_done",
+    "timestamp": "2025-11-21T10:18:00Z"
+  }
+}
+```
+
+**Qué hace:**
+1. Encuentra el step con el `taskId`
+2. Cambia el status de `'coming'` → `'active'` (azul)
+3. La UI detecta el cambio y auto-navega al step
+
+**Resultado visual:**
+- 🔵 Step: Active (barra azul pulsante)
+- 🎯 Auto-navegación al step
+- ⏱️ Timer se detiene
+
+---
+
+## 6. FLUJO COMPLETO DE UNA RECETA
+
+Aquí está el flujo end-to-end con todos los eventos:
+
+### Fase 1: Inicio
+```
+Usuario: Click "Start cooking"
+  ↓
+Frontend: action='startrecipe', payload={workflowId}
+  ↓
+Backend: messageType='recipe_started' 
+  → Step 1 = 'active', Steps 2-N = 'coming'
+  
+O alternativamente:
+Backend: messageType='workflow_started'
+  → Crea receta completa, Step 1 = 'active'
+```
+
+### Fase 2: Progreso
+```
+Usuario: Habla/escribe "I'm done chopping"
+  ↓
+Frontend: action='sendtext', payload={message}
+  ↓
+Backend analiza y responde:
+
+Opción A - Solo texto:
+Backend: messageType='text'
+  → Muestra respuesta del agente
+
+Opción B - Tarea completada:
+Backend: messageType='task_done', payload={taskId}
+  → Step actual = 'done', Siguiente = 'active'
+  → Auto-navega al siguiente step
+```
+
+### Fase 3: Steps con Timer
+```
+Backend: messageType='timed_task', payload={taskId, duration}
+  → Step permanece 'coming', inicia countdown
+  ↓
+[Countdown en progreso: 5 minutos...]
+  ↓
+Backend: messageType='timer_done', payload={taskId}
+  → Step = 'active'
+  → Auto-navega al step
+```
+
+### Fase 4: Finalización
+```
+Usuario completa último step
+  ↓
+Backend: messageType='task_done', payload={taskId: "task_008"}
+  → Último step = 'done'
+  ↓
+Backend: messageType='workflow_finished'
+  → TODOS los steps = 'done'
+  → Muestra "🎉 Recipe completed!"
+```
+
+---
+
+## 7. FLUJO DE MENSAJES DE TEXTO (sendtext)
+
+### Usuario envía mensaje
+```typescript
+// Frontend
+action: 'sendtext'
+payload: { message: "How do I chop the garlic?" }
+```
+
+### Backend puede responder con múltiples messageTypes:
+
+#### Respuesta 1: Texto simple
+```json
+{
+  "messageType": "text",
+  "payload": {
+    "message": "To chop garlic: remove skin, place flat side down..."
+  }
+}
+```
+
+#### Respuesta 2: Tarea completada
+```json
+{
+  "messageType": "task_done",
+  "payload": {
+    "taskId": "task_001",
+    "status": "success"
+  }
+}
+```
+→ Marca step done, activa siguiente, auto-navega
+
+#### Respuesta 3: Activar siguiente tarea
+```json
+{
+  "messageType": "next_task",
+  "payload": {
+    "taskId": "task_002"
+  }
+}
+```
+→ Activa step específico, auto-navega
+
+#### Respuesta 4: Combinación
+El backend puede enviar **múltiples mensajes** en secuencia:
+1. `text` - Confirmación al usuario
+2. `task_done` - Marca tarea completada
+3. `next_task` - Activa siguiente
+
+---
+
+## 8. RESUMEN RÁPIDO
+
+| Acción (Frontend → Backend) | MessageType (Backend → Frontend) | Propósito | Status Change |
+|----------------------------|----------------------------------|-----------|---------------|
+| `sendtext` | `text` / `text_message` | Mensaje de texto genérico | - |
+| `getrecipes` | `recipes_list` | Obtener lista de recetas | - |
+| `getrecipe` | `recipe_detail` | Obtener detalles de una receta | - |
+| `startrecipe` | `recipe_started` | Iniciar sesión de cocina | Step 1 → active |
+| - | `workflow_started` | Workflow completo con tasks | Step 1 → active, resto → coming |
+| `taskdone` (manual) | `task_done` | Marcar paso completado | Current → done, next → active |
+| `sendtext` (IA detecta) | `task_done` | IA detecta tarea completada | Current → done, next → active |
+| - | `next_task` | Activar siguiente tarea | Specific step → active |
+| - | `timed_task` | Iniciar timer | Step stays coming |
+| - | `timer_done` | Timer completado | Step → active |
+| - | `workflow_finished` | Receta completada | ALL steps → done |
+| - | `scheduled_task` | Timer automático (notificación) | - |
+
+### Estados de Steps (Status)
+- ⚪ **`'coming'`**: Gris - Paso futuro, no disponible aún
+- 🔵 **`'active'`**: Azul pulsante - Paso actual, usuario debe completar
+- ✅ **`'done'`**: Verde - Paso completado
+
+### Auto-navegación
+La UI **automáticamente navega** al step activo cuando:
+- Llega `task_done` → activa siguiente → navega
+- Llega `next_task` → activa step → navega  
+- Llega `timer_done` → activa step → navega
+
+**Usuario NO necesita presionar "Next"** cuando el backend marca tareas como completadas.
+
+---
+
+## 9. VALIDACIONES Y ERRORES
 
 Todas las funciones que envían acciones validan:
 1. ✅ `isConnected` - WebSocket está conectado
@@ -804,7 +1261,7 @@ Todos los handlers de messageType:
 
 ---
 
-## 8. CALLBACKS DISPONIBLES
+## 10. CALLBACKS DISPONIBLES
 
 El hook `useChatSocket` acepta estos callbacks opcionales:
 
@@ -821,5 +1278,5 @@ interface UseChatSocketOptions {
 
 ---
 
-**Última actualización:** $(date)
+**Última actualización:** 2025-11-21 - Agregado soporte completo para Workflow Engine events (workflow_started, workflow_finished, task_done mejorado, next_task, timed_task, timer_done)
 

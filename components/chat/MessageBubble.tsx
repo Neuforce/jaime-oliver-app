@@ -14,6 +14,8 @@ interface MessageBubbleProps {
   startRecipe?: (workflowId: string) => void;
   taskDone?: (taskId: string) => void;
   contextualMessages?: ChatMessage[]; // Messages to show contextually (text, scheduled_task)
+  autoNavigateToTaskId?: string | null;
+  onAutoNavigateComplete?: () => void;
 }
 
 // Simple function to convert markdown bold to HTML
@@ -35,7 +37,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   getRecipe, 
   startRecipe, 
   taskDone,
-  contextualMessages = []
+  contextualMessages = [],
+  autoNavigateToTaskId,
+  onAutoNavigateComplete
 }) => {
   const [isRecipeExpanded, setIsRecipeExpanded] = useState(false);
   const [selectedRecipeTitle, setSelectedRecipeTitle] = useState<string | null>(null);
@@ -83,6 +87,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 startRecipe={startRecipe}
                 taskDone={taskDone}
                 contextualMessages={contextualMessages}
+                autoNavigateToTaskId={autoNavigateToTaskId}
+                onAutoNavigateComplete={onAutoNavigateComplete}
               />
             )}
           </>
